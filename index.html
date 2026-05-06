@@ -78,6 +78,19 @@
   }
   .screen.active { display: flex; }
 
+  #scr-final {
+    justify-content: center;
+    align-items: center;
+  }
+
+  #final-body {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
   @keyframes slideUp {
     from { opacity: 0; transform: translateY(30px); }
     to { opacity: 1; transform: translateY(0); }
@@ -257,7 +270,7 @@
   </div>
 </div>
 
-<audio id="bgm" loop src="https://docs.google.com/uc?export=open&id=1Td3OLZVvYA-kgyzbUiFAqSvdazzsZbHs"></audio>
+<audio id="bgm" loop autoplay preload="auto" src="./assets/bgm.m4a"></audio>
 
 <script>
 /**
@@ -269,12 +282,157 @@ const state = {
   user: "",
   emotion: "",
   path: "",
+  activity: "",
+  mood: null,
   music: false,
+  apiOnline: true,
   groundingIndex: 0,
   journalContent: "",
   timeStart: null,
-  breathingActive: false
+  timeSpent: 0,
+  completedAt: null,
+  breathingActive: false,
+  sessionId: 0
 };
+
+const API_BASE = "https://script.google.com/macros/s/AKfycbyqoVUlQyZHE9J51BKVElQTIx_i7ZBZFZ5fvknwqFr9Nh0hz42RrI0Zp5zvW0LCKpXa4g/exec";
+const USER_STORAGE_PREFIX = "heyjim:user:";
+const MUSIC_STORAGE_KEY = "heyjim:music-enabled";
+
+let isFinishing = false;
+let isLoggingIn = false;
+window.__timers = window.__timers || [];
+
+function registerTimer(timerId) {
+  window.__timers.push(timerId);
+  return timerId;
+}
+
+function unregisterTimer(timerId) {
+  window.__timers = window.__timers.filter(id => id !== timerId);
+}
+
+function clearAllTimers() {
+  window.__timers.forEach(timerId => {
+    clearTimeout(timerId);
+    clearInterval(timerId);
+  });
+  window.__timers = [];
+}
+
+function clearRegisteredTimer(timerId) {
+  clearTimeout(timerId);
+  clearInterval(timerId);
+  unregisterTimer(timerId);
+}
+
+function safeSetTimeout(callback, delay) {
+  const timerId = registerTimer(setTimeout(() => {
+    unregisterTimer(timerId);
+    if(!isFinishing) callback();
+  }, delay));
+  return timerId;
+}
+
+function safeSetInterval(callback, delay) {
+  const timerId = registerTimer(setInterval(() => {
+    if(!isFinishing) callback();
+  }, delay));
+  return timerId;
+}
+
+function safeDelay(delay, options = {}) {
+  if(isFinishing && !options.allowDuringFinish) return Promise.resolve(false);
+  return new Promise(resolve => {
+    const timerId = registerTimer(setTimeout(() => {
+      unregisterTimer(timerId);
+      resolve(options.allowDuringFinish || !isFinishing);
+    }, delay));
+  });
+}
+
+function isChatActive(sessionId = state.sessionId) {
+  const chatScreen = document.getElementById('scr-chat');
+  return !isFinishing && state.sessionId === sessionId && chatScreen && chatScreen.classList.contains('active');
+}
+
+function storageKey(name = state.user) {
+  return `${USER_STORAGE_PREFIX}${encodeURIComponent((name || "Amigo").trim().toLowerCase())}`;
+}
+
+function getLocalUser(name = state.user) {
+  try {
+    return JSON.parse(localStorage.getItem(storageKey(name)) || "null");
+  } catch(error) {
+    console.warn("Could not read local user state", error);
+    return null;
+  }
+}
+
+function saveLocalUser(data = {}) {
+  try {
+    const previous = getLocalUser(data.name || state.user) || {};
+    localStorage.setItem(storageKey(data.name || state.user), JSON.stringify({
+      ...previous,
+      ...data,
+      name: data.name || state.user,
+      updatedAt: new Date().toISOString()
+    }));
+  } catch(error) {
+    console.warn("Could not save local user state", error);
+  }
+}
+
+async function fetchWithTimeout(url, timeout = 8000) {
+  const controller = new AbortController();
+  const timeoutId = registerTimer(setTimeout(() => controller.abort(), timeout));
+  try {
+    return await fetch(url, { method: "GET", cache: "no-store", signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+    unregisterTimer(timeoutId);
+  }
+}
+
+const api = {
+  async request(action, params = {}) {
+    const query = new URLSearchParams({ action, ...params });
+    const response = await fetchWithTimeout(`${API_BASE}?${query.toString()}`);
+    const raw = await response.text();
+    let data = {};
+
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch(error) {
+      data = { raw };
+    }
+
+    if(!response.ok) {
+      throw new Error(data.error || `API ${action} failed with ${response.status}`);
+    }
+
+    state.apiOnline = true;
+    return data;
+  },
+  login(name) {
+    return this.request("login", { name });
+  },
+  update(name, payload = {}) {
+    return this.request("update", {
+      name,
+      emotion: payload.emotion || "",
+      activity: payload.activity || "",
+      timeSpent: payload.timeSpent || 0,
+      mood: payload.mood ?? "",
+      completedAt: payload.completedAt || ""
+    });
+  },
+  get(name) {
+    return this.request("get", { name });
+  }
+};
+
+window.api = api;
 
 // Palavras-chave que indicam conteúdo prejudicial
 const HARMFUL_KEYWORDS = [
@@ -378,39 +536,149 @@ const T = {
 /* --- NAVEGAÇÃO E BÁSICO --- */
 
 function nextScreen(id) {
+  const target = document.getElementById(id);
+  if(!target) return;
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  target.classList.add('active');
+}
+
+function updateMusicButton() {
+  const button = document.getElementById('musicBtn');
+  if(!button) return;
+  button.style.opacity = state.music ? "1" : "0.5";
+  button.title = state.music ? "Pausar musica" : "Tocar musica";
+}
+
+async function playMusic() {
+  const audio = document.getElementById('bgm');
+  if(!audio) return false;
+  audio.volume = 0.35;
+  audio.loop = true;
+  state.music = true;
+  updateMusicButton();
+  localStorage.setItem(MUSIC_STORAGE_KEY, "on");
+
+  try {
+    await audio.play();
+    return true;
+  } catch(error) {
+    if(error.name === "NotSupportedError") {
+      state.music = false;
+      updateMusicButton();
+      console.warn("Background music source could not be played by this browser.", error);
+    } else {
+      console.warn("Autoplay blocked. Music will start after user interaction.", error);
+    }
+    return false;
+  }
+}
+
+function pauseMusic() {
+  const audio = document.getElementById('bgm');
+  if(audio) audio.pause();
+  state.music = false;
+  updateMusicButton();
+  localStorage.setItem(MUSIC_STORAGE_KEY, "off");
 }
 
 function toggleMusic() {
   const audio = document.getElementById('bgm');
-  state.music = !state.music;
-  state.music ? audio.play() : audio.pause();
-  document.getElementById('musicBtn').style.opacity = state.music ? "1" : "0.5";
+  if(!audio) return;
+  if(state.music && !audio.paused) {
+    pauseMusic();
+  } else {
+    playMusic();
+  }
 }
 
-function saveUser() {
+function initMusic() {
+  const audio = document.getElementById('bgm');
+  if(!audio) return;
+  audio.volume = 0.35;
+  audio.loop = true;
+
+  const storedPreference = localStorage.getItem(MUSIC_STORAGE_KEY);
+  state.music = storedPreference !== "off";
+  updateMusicButton();
+
+  if(state.music) playMusic();
+
+  const resumeMusic = event => {
+    if(event.target && event.target.closest && event.target.closest('#musicBtn')) return;
+    if(state.music && audio.paused) playMusic();
+  };
+
+  document.addEventListener('pointerdown', resumeMusic, { once: true });
+  document.addEventListener('keydown', resumeMusic, { once: true });
+  document.addEventListener('touchstart', resumeMusic, { once: true });
+}
+
+function setLoginLoading(isLoading) {
+  const button = document.querySelector('#scr-login .btn-primary');
+  if(!button) return;
+  button.disabled = isLoading;
+  button.style.opacity = isLoading ? "0.65" : "1";
+  button.innerText = isLoading ? "Conectando..." : "Continuar";
+}
+
+async function syncUserOnLogin(name) {
+  try {
+    await api.login(name);
+    const remoteUser = await api.get(name);
+    saveLocalUser({ name, remoteUser, lastLoginAt: new Date().toISOString() });
+    return remoteUser;
+  } catch(error) {
+    state.apiOnline = false;
+    console.warn("API unavailable. Continuing with local fallback.", error);
+    saveLocalUser({ name, offline: true, lastLoginAt: new Date().toISOString() });
+    return getLocalUser(name);
+  }
+}
+
+async function saveUser() {
+  if(isFinishing || isLoggingIn) return;
+  isLoggingIn = true;
+  clearAllTimers();
+  isFinishing = false;
+  state.sessionId++;
+  state.emotion = "";
+  state.activity = "";
+  state.journalContent = "";
+  state.completedAt = null;
+  state.timeSpent = 0;
+
   const name = document.getElementById('userName').value.trim();
   state.user = name || "Amigo";
   state.timeStart = new Date();
-  nextScreen('scr-chat');
-  startMainFlow();
+  setLoginLoading(true);
+  try {
+    await syncUserOnLogin(state.user);
+    nextScreen('scr-chat');
+    startMainFlow();
+  } finally {
+    isLoggingIn = false;
+    setLoginLoading(false);
+  }
 }
 
 /* --- FLUXO PRINCIPAL (A LÓGICA QUE CONSOME TEMPO) --- */
 
 async function speak(text, delay = 1500) {
+  const sessionId = state.sessionId;
   const body = document.getElementById('chat-body');
   const typing = document.getElementById('typing');
+  if(!body || !typing || !isChatActive(sessionId)) return false;
   
   body.innerHTML = "";
   typing.style.display = "block";
-  await new Promise(r => setTimeout(r, delay));
+  const shouldContinue = await safeDelay(delay);
+  if(!shouldContinue || !body || !typing || !isChatActive(sessionId)) return false;
   typing.style.display = "none";
   
   const h = document.createElement('h2');
   h.innerText = text;
   body.appendChild(h);
+  return true;
 }
 
 async function startMainFlow() {
@@ -480,10 +748,13 @@ function updateMoodUI(idx){
 function handleMoodConfirm(){
   const idx = document.getElementById('moodRange').value;
   state.mood = idx;
-  speak(T.pt.moodMeter.thanks).then(() => { showEmotionGrid(); });
+  speak(T.pt.moodMeter.thanks).then(shouldContinue => {
+    if(shouldContinue) showEmotionGrid();
+  });
 }
 
 function showEmotionGrid(){
+  if(isFinishing) return;
   const body = document.getElementById('chat-body');
   body.innerHTML = '';
   const grid = document.createElement('div');
@@ -499,8 +770,8 @@ function showEmotionGrid(){
 }
 
 async function startMainFlowContinue() {
-  await speak(`Olá, ${state.user}. Que bom que você parou um pouco.`);
-  await speak(CONTENT.pt.initial);
+  if(!(await speak(`Olá, ${state.user}. Que bom que você parou um pouco.`))) return;
+  if(!(await speak(CONTENT.pt.initial))) return;
   // Primeiro passo interativo: Mood Meter
   renderMoodMeter();
 }
@@ -509,23 +780,24 @@ async function handleEmotionSelection(id) {
   state.emotion = id;
   
   if(id === 'anxious') {
-    await speak("A ansiedade é seu corpo em alerta. Vamos acalmá-lo com atividades comprovadas.");
+    if(!(await speak("A ansiedade é seu corpo em alerta. Vamos acalmá-lo com atividades comprovadas."))) return;
     renderActivitySelection('anxious');
   } else if(id === 'sad') {
-    await speak("Sua tristeza é válida. Você está passando por um momento difícil, e tudo bem sentir isso.");
-    await new Promise(r => setTimeout(r, 3000));
+    if(!(await speak("Sua tristeza é válida. Você está passando por um momento difícil, e tudo bem sentir isso."))) return;
+    if(!(await safeDelay(3000))) return;
     renderMotivationalMessage("triste");
   } else if(id === 'stressed') {
-    await speak("Estresse é seu corpo pedindo descanso. Vamos aliviar essa pressão.");
+    if(!(await speak("Estresse é seu corpo pedindo descanso. Vamos aliviar essa pressão."))) return;
     renderActivitySelection('stressed');
   } else if(id === 'overwhelmed') {
-    await speak("Sentir-se sobrecarregado é sinal de que você se importa. Vamos aliviar isso juntos.");
-    await new Promise(r => setTimeout(r, 3000));
+    if(!(await speak("Sentir-se sobrecarregado é sinal de que você se importa. Vamos aliviar isso juntos."))) return;
+    if(!(await safeDelay(3000))) return;
     renderMotivationalMessage("sobrecarregado");
   }
 }
 
 function renderActivitySelection(emotion) {
+  if(isFinishing) return;
   const activities = {
     anxious: [
       { icon: "🫁", name: "Respiração Quadrada", desc: "4 passos: inspira, segura, expira, pausa", action: "startBreathingSquare" },
@@ -559,7 +831,10 @@ function renderActivitySelection(emotion) {
     card.onclick = () => {
       card.style.borderColor = 'var(--gold)';
       card.style.transform = 'scale(0.98)';
-      setTimeout(() => window[act.action](), 300);
+      state.activity = act.name;
+      safeSetTimeout(() => {
+        if(typeof window[act.action] === "function") window[act.action]();
+      }, 300);
     };
     card.onmouseover = () => {
       card.style.borderColor = 'var(--gold)';
@@ -581,6 +856,7 @@ function renderActivitySelection(emotion) {
 }
 
 async function renderMotivationalMessage(type) {
+  if(isFinishing) return;
   const body = document.getElementById('chat-body');
   
   const message = type === 'triste' 
@@ -629,6 +905,7 @@ function renderOverwhelmedActivitySelection() {
 }
 
 function renderActivitySelectionUI(activities) {
+  if(isFinishing) return;
   const body = document.getElementById('chat-body');
   body.innerHTML = `<h2 style="font-size:20px; margin-bottom:20px;">Escolha uma atividade</h2>`;
 
@@ -648,7 +925,10 @@ function renderActivitySelectionUI(activities) {
     card.onclick = () => {
       card.style.borderColor = 'var(--gold)';
       card.style.transform = 'scale(0.98)';
-      setTimeout(() => window[act.action](), 300);
+      state.activity = act.name;
+      safeSetTimeout(() => {
+        if(typeof window[act.action] === "function") window[act.action]();
+      }, 300);
     };
     card.onmouseover = () => {
       card.style.borderColor = 'var(--gold)';
@@ -703,7 +983,7 @@ function renderBreathingExercise() {
     circle.style.background = "var(--mint)";
     circle.innerText = "Inspirar";
     
-    animationTimeout = setTimeout(() => {
+    animationTimeout = safeSetTimeout(() => {
       if (!state.breathingActive) return;
       
       // Segurar (4s)
@@ -711,7 +991,7 @@ function renderBreathingExercise() {
       circle.style.transition = "none";
       circle.innerText = "Segurar";
       
-      animationTimeout = setTimeout(() => {
+      animationTimeout = safeSetTimeout(() => {
         if (!state.breathingActive) return;
         
         // Expirar (4s)
@@ -721,7 +1001,7 @@ function renderBreathingExercise() {
         circle.style.background = "var(--coral)";
         circle.innerText = "Expirar";
         
-        animationTimeout = setTimeout(() => {
+        animationTimeout = safeSetTimeout(() => {
           if (!state.breathingActive) return;
           
           // Pausa (4s)
@@ -738,7 +1018,7 @@ function renderBreathingExercise() {
             btn.innerText = T.pt.breathingFinish;
             btn.onclick = () => {
               state.breathingActive = false;
-              if(animationTimeout) clearTimeout(animationTimeout);
+              if(animationTimeout) clearRegisteredTimer(animationTimeout);
               startGrounding();
             };
             controls.appendChild(btn);
@@ -746,20 +1026,20 @@ function renderBreathingExercise() {
             return;
           }
 
-          animationTimeout = setTimeout(runCycle, 4000);
+          animationTimeout = safeSetTimeout(runCycle, 4000);
         }, 4000);
       }, 4000);
     }, 4000);
   };
   
-  setTimeout(runCycle, 2000);
+  safeSetTimeout(runCycle, 2000);
 }
 
 /* --- MÓDULO: ANCORAGEM DE CORES (Aumentado para 7 cores) --- */
 
 async function startGrounding() {
   state.groundingIndex = 0;
-  await speak("Agora, vamos conectar seus olhos com o mundo ao seu redor.");
+  if(!(await speak("Agora, vamos conectar seus olhos com o mundo ao seu redor."))) return;
   renderGroundingStep();
 }
 
@@ -789,7 +1069,7 @@ function nextGroundingStep() {
 /* --- MÓDULO: DIÁRIO REFLEXIVO --- */
 
 async function renderJournaling() {
-  await speak("Para finalizar, escreva uma coisa que te deixou grato hoje, por menor que seja.");
+  if(!(await speak("Para finalizar, escreva uma coisa que te deixou grato hoje, por menor que seja."))) return;
   const body = document.getElementById('chat-body');
   body.innerHTML = '';
   
@@ -830,13 +1110,14 @@ function validateAndFinish() {
     errorMsg.style.display = 'block';
     return;
   }
-  
+
+  setJournalContent(content);
   finishSession();
 }
 
 // Pequenas Vitórias — atividade interativa para emoções de tristeza
 async function renderSmallVictories() {
-  await speak(T.pt.smallVictories.title);
+  if(!(await speak(T.pt.smallVictories.title))) return;
   const body = document.getElementById('chat-body');
   body.innerHTML = `<h2>${T.pt.smallVictories.title}</h2>`;
 
@@ -912,8 +1193,7 @@ function finishSmallVictories(){
   }
   
   const combined = parts.join(' \n ');
-  const hidden = document.getElementById('userJournal');
-  if(hidden) hidden.value = combined;
+  setJournalContent(combined);
   finishSession();
 }
 
@@ -924,7 +1204,7 @@ function startBreathingSquare() {
 }
 
 async function startGroundingFiveSenses() {
-  await speak("Vamos conectar você aos seus 5 sentidos. Isso traz você para o presente.");
+  if(!(await speak("Vamos conectar você aos seus 5 sentidos. Isso traz você para o presente."))) return;
   renderFiveSenses();
 }
 
@@ -943,7 +1223,7 @@ function renderFiveSenses() {
 
   const displayStep = () => {
     if(currentStep >= senses.length) {
-      document.getElementById('userJournal').value = 'Completei o grounding dos 5 sentidos';
+      setJournalContent('Completei o grounding dos 5 sentidos');
       finishSession();
       return;
     }
@@ -967,7 +1247,7 @@ function renderFiveSenses() {
 }
 
 async function startRapidThoughts() {
-  await speak("Seus pensamentos estão acelerados. Vamos colocá-los no papel para organizar.");
+  if(!(await speak("Seus pensamentos estão acelerados. Vamos colocá-los no papel para organizar."))) return;
   renderRapidThoughts();
 }
 
@@ -988,14 +1268,14 @@ function finishRapidThoughts() {
     alert('Escreva seus pensamentos para continuar!');
     return;
   }
-  document.getElementById('userJournal').value = content;
+  setJournalContent(content);
   finishSession();
 }
 
 /* --- ATIVIDADES PARA ESTRESSADO --- */
 
 async function startBreathing478() {
-  await speak("A respiração 4-7-8 é uma técnica ancestral de relaxamento profundo.");
+  if(!(await speak("A respiração 4-7-8 é uma técnica ancestral de relaxamento profundo."))) return;
   renderBreathing478();
 }
 
@@ -1025,14 +1305,14 @@ function renderBreathing478() {
     circle.style.background = "var(--mint)";
     circle.innerText = "4";
     
-    animationTimeout = setTimeout(() => {
+    animationTimeout = safeSetTimeout(() => {
       // 7s segurar
       instr.innerText = "Segure por 7 segundos";
       circle.style.transition = "none";
       circle.style.background = "var(--sky-deep)";
       circle.innerText = "7";
       
-      animationTimeout = setTimeout(() => {
+      animationTimeout = safeSetTimeout(() => {
         // 8s expirar
         instr.innerText = "Expire por 8 segundos";
         circle.style.transition = "all 8s ease-out";
@@ -1040,7 +1320,7 @@ function renderBreathing478() {
         circle.style.background = "var(--coral)";
         circle.innerText = "8";
         
-        animationTimeout = setTimeout(() => {
+        animationTimeout = safeSetTimeout(() => {
           cycles++;
           if(cycles >= minCycles && !finishBtnAdded) {
             const btn = document.createElement('button');
@@ -1054,17 +1334,17 @@ function renderBreathing478() {
             finishBtnAdded = true;
             return;
           }
-          animationTimeout = setTimeout(runCycle, 2000);
+          animationTimeout = safeSetTimeout(runCycle, 2000);
         }, 8000);
       }, 7000);
     }, 4000);
   };
   
-  setTimeout(runCycle, 1500);
+  safeSetTimeout(runCycle, 1500);
 }
 
 async function startTensionRelease() {
-  await speak("Vamos liberar a tensão do seu corpo progressivamente.");
+  if(!(await speak("Vamos liberar a tensão do seu corpo progressivamente."))) return;
   renderTensionRelease();
 }
 
@@ -1106,7 +1386,7 @@ function renderTensionRelease() {
 }
 
 async function startOrganizedWorries() {
-  await speak("Vamos transformar suas preocupações em um plano organizável.");
+  if(!(await speak("Vamos transformar suas preocupações em um plano organizável."))) return;
   renderOrganizedWorries();
 }
 
@@ -1138,7 +1418,7 @@ function finalizeWorries() {
   }
 
   const combined = [w1, w2, w3].filter(w => w).join('; ');
-  document.getElementById('userJournal').value = combined;
+  setJournalContent(combined);
   finishSession();
 }
 
@@ -1164,7 +1444,7 @@ function finishCompassionLetter() {
     alert('Seus sentimentos importam. Se está em crise, ligue 188 (CVV). 💚');
     return;
   }
-  document.getElementById('userJournal').value = content;
+  setJournalContent(content);
   finishSession();
 }
 
@@ -1185,7 +1465,7 @@ function finishHopeViz() {
     alert('Compartilhe sua esperança!');
     return;
   }
-  document.getElementById('userJournal').value = content;
+  setJournalContent(content);
   finishSession();
 }
 
@@ -1219,7 +1499,7 @@ function finishPrioritization() {
   const w3 = document.getElementById('wait3').value.trim();
   
   const combined = `URGENTE: ${urgent}\n\nPODE ESPERAR: ${[w1,w2,w3].filter(w=>w).join(', ')}`;
-  document.getElementById('userJournal').value = combined;
+  setJournalContent(combined);
   finishSession();
 }
 
@@ -1246,13 +1526,13 @@ async function renderMindfulnessBreathing() {
     circle.innerText = remaining + 's';
     
     if(elapsed >= maxTime) {
-      clearInterval(timer);
+      clearRegisteredTimer(timer);
       const btn = document.createElement('button');
       btn.className = 'btn btn-primary';
       btn.style.width = '60%';
       btn.innerText = 'Sinto a calma agora';
       btn.onclick = () => {
-        document.getElementById('userJournal').value = 'Completei 1 minuto de respiração consciente';
+        setJournalContent('Completei 1 minuto de respiração consciente');
         finishSession();
       };
       controls.appendChild(btn);
@@ -1260,28 +1540,96 @@ async function renderMindfulnessBreathing() {
     }
   };
   
-  timer = setInterval(updateTime, 1000);
+  timer = safeSetInterval(updateTime, 1000);
 }
 
 /* --- FINALIZAÇÃO --- */
 
-async function finishSession() {
-  const content = document.getElementById('userJournal').value;
-  await speak("Processando suas reflexões...");
-  
-  // Simula um tempo de "análise"
-  await new Promise(r => setTimeout(r, 3000));
-  
-  const timeSpent = Math.round((new Date() - state.timeStart) / 60000);
-  
-  // Navega para a tela final
-  nextScreen('scr-final');
-  
+function ensureUserJournal() {
+  if(!document.getElementById('userJournal')) {
+    const area = document.createElement('textarea');
+    area.id = 'userJournal';
+    area.style.display = 'none';
+    document.body.appendChild(area);
+  }
+}
+
+function setJournalContent(content) {
+  state.journalContent = content || "";
+  const journal = document.getElementById('userJournal');
+  if(journal) journal.value = state.journalContent;
+}
+
+function getJournalContent() {
+  const journal = document.getElementById('userJournal');
+  const content = journal ? journal.value : state.journalContent;
+  return (content || "").trim() || "Atividade completada com sucesso";
+}
+
+function buildSessionPayload(content) {
+  const startedAt = state.timeStart ? new Date(state.timeStart) : new Date();
+  state.timeSpent = Math.max(1, Math.round((new Date() - startedAt) / 60000));
+  state.completedAt = new Date().toISOString();
+
+  return {
+    name: state.user || "Amigo",
+    emotion: state.emotion || "",
+    activity: state.activity || "Atividade completada",
+    mood: state.mood ?? "",
+    timeSpent: state.timeSpent,
+    completedAt: state.completedAt,
+    journalContent: content
+  };
+}
+
+async function persistSession(payload) {
+  saveLocalUser({ ...payload, pendingSync: true });
+
+  try {
+    await api.update(payload.name, payload);
+    saveLocalUser({ ...payload, pendingSync: false, syncedAt: new Date().toISOString() });
+  } catch(error) {
+    state.apiOnline = false;
+    console.warn("Could not sync session. Local fallback saved.", error);
+    saveLocalUser({ ...payload, pendingSync: true, syncError: error.message });
+  }
+}
+
+function finishSession() {
+  if(isFinishing) return;
+  isFinishing = true;
+  state.breathingActive = false;
+  clearAllTimers();
+
+  try {
+    ensureUserJournal();
+    const content = getJournalContent();
+    setJournalContent(content);
+    const payload = buildSessionPayload(content);
+    const typing = document.getElementById('typing');
+
+    if(typing) typing.style.display = "none";
+    nextScreen('scr-final');
+    renderFinalScreen(payload.timeSpent);
+    persistSession(payload);
+  } catch(error) {
+    console.error('Erro em finishSession:', error);
+    nextScreen('scr-final');
+    renderFinalScreen(state.timeSpent || 1);
+  }
+}
+
+function renderFinalScreen(timeSpent = 1) {
   const finalBody = document.getElementById('final-body');
+  if(!finalBody) {
+    console.error('final-body não encontrado');
+    return;
+  }
+
   finalBody.innerHTML = `
     <div class="jim-icon">🌤️</div>
     <h2>Orgulho de você, ${state.user}.</h2>
-    <p class="prose">Você dedicou cerca de ${timeSpent} minutos para cuidar de si mesmo. Isso é mais do que a maioria das pessoas faz em uma semana inteira.</p>
+    <p class="prose">Você dedicou cerca de ${timeSpent} minuto(s) para cuidar de si mesmo. Isso é mais do que a maioria das pessoas faz em uma semana inteira.</p>
     <div class="end-card" style="margin-top:20px; padding:20px; background:rgba(168,218,188,0.2); border-radius:15px; margin-bottom:20px;">
         <p class="prose" style="font-size:14px; color: #2d8c45; margin-bottom:8px;">"O que você compartilhou ficará guardado no seu coração."</p>
         <p class="prose" style="font-size:13px; color: var(--text-soft); font-style: italic;">Você é mais forte do que pensa. 💚</p>
@@ -1294,38 +1642,61 @@ async function finishSession() {
   `;
 }
 
-// Iniciar Onboarding
-document.getElementById('userName').addEventListener('keypress', e => { if(e.key === 'Enter') saveUser(); });
+// Iniciar Onboarding - com proteção para carregamento do DOM
+document.addEventListener('DOMContentLoaded', function() {
+  initMusic();
+  const userNameField = document.getElementById('userName');
+  if(userNameField) {
+    userNameField.addEventListener('keypress', e => {
+      if(e.key === 'Enter') saveUser();
+    });
+  }
+});
 
 function backToWelcome() {
+  clearAllTimers();
+  isFinishing = false;
+  state.sessionId++;
+
   // Reset do estado
   state.user = "";
   state.emotion = "";
   state.path = "";
+  state.activity = "";
+  state.mood = null;
   state.groundingIndex = 0;
   state.journalContent = "";
   state.timeStart = null;
+  state.timeSpent = 0;
+  state.completedAt = null;
   state.breathingActive = false;
   
   // Limpa campos
-  document.getElementById('userName').value = '';
+  const userNameField = document.getElementById('userName');
+  if(userNameField) userNameField.value = '';
+  document.querySelectorAll('#userJournal').forEach(el => el.remove());
   
   // Volta para tela de bem-vindo
   nextScreen('scr-welcome');
 }
 
 function exitApp() {
+  clearAllTimers();
+  state.breathingActive = false;
+
   // Mostra mensagem de despedida
   nextScreen('scr-final');
   const finalBody = document.getElementById('final-body');
-  finalBody.innerHTML = `
-    <div class="jim-icon" style="animation: none; margin-bottom: 20px;">👋</div>
-    <h2>Até em breve!</h2>
-    <p class="prose">Lembre-se: você merece cuidado, especialmente de si mesmo.</p>
-    <p class="prose" style="margin-top:15px; font-size:14px; color: var(--gold-dark); font-weight:600;">Volte sempre que precisar. Estarei aqui. 💚</p>
-    <div style="height:30px;"></div>
-    <button class="btn btn-ghost" onclick="backToWelcome()">Voltar</button>
-  `;
+  if(finalBody) {
+    finalBody.innerHTML = `
+      <div class="jim-icon" style="animation: none; margin-bottom: 20px;">👋</div>
+      <h2>Até em breve!</h2>
+      <p class="prose">Lembre-se: você merece cuidado, especialmente de si mesmo.</p>
+      <p class="prose" style="margin-top:15px; font-size:14px; color: var(--gold-dark); font-weight:600;">Volte sempre que precisar. Estarei aqui. 💚</p>
+      <div style="height:30px;"></div>
+      <button class="btn btn-ghost" onclick="backToWelcome()">Voltar</button>
+    `;
+  }
 }
 
 </script>
