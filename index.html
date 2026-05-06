@@ -1,373 +1,999 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>HeyJim</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HeyJim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  <style>
-    body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-family: 'Segoe UI', sans-serif;
-      overflow: hidden;
-      background: linear-gradient(180deg, #6EC6FF, #EAF6FF);
-      transition: 1s ease;
-    }
+  :root {
+    --sky: #c9e8f7;
+    --sky-deep: #8ecae6;
+    --peach: #fde8d8;
+    --warm: #fff7f0;
+    --gold: #f4a261;
+    --gold-dark: #e07b3a;
+    --mint: #a8dabc;
+    --coral: #e07b6a;
+    --text: #2d2214;
+    --text-soft: #6b5744;
+    --card-bg: rgba(255,252,248,0.82);
+    --shadow: 0 24px 64px rgba(80,50,20,0.12);
+    --radius: 28px;
+    --radius-sm: 16px;
+    --transition: 0.35s cubic-bezier(0.4,0,0.2,1);
+  }
 
-    .app {
-      width: 100%;
-      max-width: 450px;
-      padding: 30px;
-      border-radius: 25px;
-      background: rgba(255,255,255,0.25);
-      backdrop-filter: blur(18px);
-      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-      text-align: center;
-    }
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Sans', sans-serif;
+    background: linear-gradient(160deg, #b8dff7 0%, #dff0f9 35%, #fde8d8 70%, #fff2e8 100%);
+    padding: 20px;
+    overflow-x: hidden;
+  }
 
-    .jim {
-      font-size: 80px;
-      animation: float 3s infinite ease-in-out;
-    }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 20% 30%, rgba(142,202,230,0.35) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 60% at 80% 70%, rgba(253,232,216,0.5) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
 
-    @keyframes float {
-      0% { transform: translateY(0); }
-      50% { transform: translateY(-12px); }
-      100% { transform: translateY(0); }
-    }
+  .app {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 420px;
+    background: var(--card-bg);
+    backdrop-filter: blur(28px) saturate(1.4);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.7);
+    border: 1px solid rgba(255,255,255,0.6);
+    overflow: hidden;
+    min-height: 560px;
+    display: flex;
+    flex-direction: column;
+  }
 
-    input, button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 8px;
-      border-radius: 12px;
-      border: none;
-      font-size: 14px;
-    }
+  .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px 0;
+  }
 
-    button {
-      background: #FFD54F;
-      cursor: pointer;
-      font-weight: bold;
-    }
+  .brand {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
 
-    .top {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      display: flex;
-      gap: 5px;
-    }
+  .controls {
+    display: flex;
+    gap: 8px;
+  }
 
-    .mini {
-      padding: 6px 10px;
-      background: rgba(255,255,255,0.6);
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 12px;
-    }
+  .ctrl-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(255,255,255,0.8);
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    user-select: none;
+  }
+  .ctrl-btn:hover { background: rgba(255,255,255,0.95); transform: scale(1.08); }
+  .ctrl-btn.active { background: var(--gold); }
 
-    #chat, #login, #home {
-      display: none;
-    }
+  .screen {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    padding: 24px 28px 32px;
+    animation: fadeUp 0.4s ease both;
+  }
+  .screen.active { display: flex; }
 
-    #home {
-      display: block;
-    }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 
-  </style>
+  .jim-wrap {
+    display: flex;
+    justify-content: center;
+    margin: 8px 0 16px;
+  }
+
+  .jim {
+    font-size: 72px;
+    animation: float 3.2s ease-in-out infinite;
+    display: inline-block;
+    filter: drop-shadow(0 8px 16px rgba(80,50,20,0.15));
+  }
+
+  @keyframes float {
+    0%,100% { transform: translateY(0) rotate(-2deg); }
+    50%      { transform: translateY(-14px) rotate(2deg); }
+  }
+
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 30px;
+    color: var(--text);
+    line-height: 1.2;
+    letter-spacing: -0.5px;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+  h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--text);
+    line-height: 1.3;
+    letter-spacing: -0.3px;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--gold-dark);
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
+  .prose {
+    font-size: 15px;
+    color: var(--text-soft);
+    line-height: 1.7;
+    text-align: center;
+  }
+
+  .fact-strip {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .fact-pill {
+    background: rgba(244,162,97,0.15);
+    border: 1px solid rgba(244,162,97,0.3);
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: var(--text-soft);
+    line-height: 1.4;
+    text-align: center;
+  }
+
+  .spacer { flex: 1; }
+
+  .btn {
+    width: 100%;
+    padding: 15px 20px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    margin-top: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0);
+    transition: background 0.2s;
+  }
+  .btn:hover::after { background: rgba(255,255,255,0.12); }
+  .btn:active { transform: scale(0.98); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+    color: white;
+    box-shadow: 0 4px 20px rgba(224,123,58,0.35);
+  }
+
+  .btn-ghost {
+    background: rgba(255,255,255,0.6);
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,0.8);
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.9); }
+
+  .choice-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .choice-grid.single { grid-template-columns: 1fr; }
+
+  .choice-btn {
+    padding: 16px 12px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid rgba(255,255,255,0.8);
+    background: rgba(255,255,255,0.55);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    text-align: center;
+    transition: var(--transition);
+    line-height: 1.35;
+  }
+  .choice-btn .emoji { font-size: 26px; display: block; margin-bottom: 6px; }
+  .choice-btn:hover {
+    background: rgba(255,255,255,0.9);
+    border-color: var(--gold);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(80,50,20,0.08);
+  }
+  .choice-btn:active { transform: scale(0.97); }
+
+  .input-field {
+    width: 100%;
+    padding: 14px 18px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid rgba(255,255,255,0.8);
+    background: rgba(255,255,255,0.65);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    color: var(--text);
+    outline: none;
+    transition: var(--transition);
+    margin-bottom: 12px;
+  }
+  .input-field:focus {
+    border-color: var(--gold);
+    background: rgba(255,255,255,0.9);
+    box-shadow: 0 0 0 4px rgba(244,162,97,0.15);
+  }
+  .input-field::placeholder { color: var(--text-soft); opacity: 0.6; }
+
+  .progress-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: rgba(80,50,20,0.15);
+    transition: var(--transition);
+  }
+  .dot.active { background: var(--gold); width: 20px; border-radius: 3px; }
+
+  .color-target {
+    margin: 20px auto;
+    width: 100%;
+    max-width: 260px;
+    aspect-ratio: 1;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    transition: background 0.6s ease, transform 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .color-target::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.2);
+    border-radius: inherit;
+  }
+  .color-target .color-label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    opacity: 0.85;
+  }
+  .found-badge {
+    position: absolute;
+    top: 12px; right: 12px;
+    background: rgba(255,255,255,0.9);
+    color: #2d8c45;
+    font-size: 18px;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    z-index: 1;
+  }
+  .found-badge.show { opacity: 1; transform: scale(1); }
+
+  .end-card {
+    background: rgba(255,255,255,0.5);
+    border-radius: var(--radius-sm);
+    padding: 20px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.8);
+    margin: 16px 0;
+  }
+  .end-card .big-emoji { font-size: 48px; margin-bottom: 10px; }
+
+  .link-btn {
+    display: inline-block;
+    padding: 8px 18px;
+    border-radius: 100px;
+    background: rgba(244,162,97,0.15);
+    border: 1px solid rgba(244,162,97,0.4);
+    color: var(--gold-dark);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: var(--transition);
+    margin: 4px;
+  }
+  .link-btn:hover { background: rgba(244,162,97,0.3); }
+
+  .onboarding-step {
+    display: none;
+  }
+  .onboarding-step.active { display: flex; flex-direction: column; flex: 1; }
+
+  .step-icon { font-size: 52px; text-align: center; margin: 16px 0 12px; }
+</style>
 </head>
-
 <body>
 
-<div class="app">
+<div class="app" id="app">
 
-  <!-- TOP CONTROLS -->
-  <div class="top">
-    <div class="mini" onclick="toggleLang()">🌐</div>
-    <div class="mini" onclick="toggleMusic()">🎵</div>
+  <div class="top-bar">
+    <div class="brand">HeyJim</div>
+    <div class="controls">
+      <div class="ctrl-btn" id="langBtn" onclick="toggleLang()" title="Change language">🌐</div>
+      <div class="ctrl-btn" id="musicBtn" onclick="toggleMusic()" title="Toggle music">🎵</div>
+    </div>
   </div>
 
-  <!-- HOME / ONBOARDING -->
-  <div id="home">
-    <div class="jim">🤖</div>
+  <!-- ONBOARDING SCREEN -->
+  <div class="screen active" id="screen-onboard">
 
-    <h2 id="title"></h2>
-    <p id="subtitle"></p>
-    <p id="onboarding"></p>
+    <div class="jim-wrap"><div class="jim">🤖</div></div>
 
-    <button onclick="goLogin()" id="startBtn"></button>
+    <!-- Step 0: Welcome -->
+    <div class="onboarding-step active" id="ob0">
+      <h1 id="ob-title"></h1>
+      <p class="subtitle" id="ob-month"></p>
+      <p class="prose" id="ob-desc1"></p>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" onclick="obNext()" id="ob-next1"></button>
+    </div>
+
+    <!-- Step 1: Facts -->
+    <div class="onboarding-step" id="ob1">
+      <div class="step-icon">🌍</div>
+      <h2 id="ob-fact-title"></h2>
+      <div class="fact-strip" id="ob-facts"></div>
+      <p class="prose" id="ob-desc2"></p>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" onclick="obNext()" id="ob-next2"></button>
+    </div>
+
+    <!-- Step 2: Jim intro -->
+    <div class="onboarding-step" id="ob2">
+      <div class="step-icon">💬</div>
+      <h2 id="ob-jim-title"></h2>
+      <p class="prose" id="ob-jim-desc"></p>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" onclick="goLogin()" id="ob-start"></button>
+    </div>
+
+    <div class="progress-dots">
+      <div class="dot active" id="pd0"></div>
+      <div class="dot" id="pd1"></div>
+      <div class="dot" id="pd2"></div>
+    </div>
+
   </div>
 
-  <!-- LOGIN -->
-  <div id="login">
-    <input id="nameInput">
-    <button onclick="login()" id="loginBtn"></button>
+  <!-- LOGIN SCREEN -->
+  <div class="screen" id="screen-login">
+    <div class="jim-wrap" style="margin-top:20px"><div class="jim" style="font-size:56px">🤖</div></div>
+    <h2 id="login-title"></h2>
+    <p class="prose" id="login-sub" style="margin-bottom:24px"></p>
+    <input class="input-field" id="nameInput" type="text" id="ob-next2">
+    <button class="btn btn-primary" onclick="login()" id="loginBtn"></button>
   </div>
 
-  <!-- CHAT -->
-  <div id="chat">
-    <div id="text"></div>
-    <div id="options"></div>
+  <!-- CHAT SCREEN -->
+  <div class="screen" id="screen-chat">
+    <div id="chat-content" style="flex:1; display:flex; flex-direction:column;"></div>
   </div>
 
 </div>
 
-<!-- MUSIC -->
-<audio id="music" loop></audio>
+<audio id="music" loop src="https://docs.google.com/uc?export=open&id=1Td3OLZVvYA-kgyzbUiFAqSvdazzsZbHs"></audio>
 
 <script>
-/* ================================
-   API
-================================ */
 const API = "https://script.google.com/macros/s/AKfycbyqoVUlQyZHE9J51BKVElQTIx_i7ZBZFZ5fvknwqFr9Nh0hz42RrI0Zp5zvW0LCKpXa4g/exec";
 
-/* ================================
-   STATE
-================================ */
+let lang = "en";
 let user = "";
 let emotion = "";
-let lang = "EN";
-let music = false;
+let musicPlaying = false;
+let obStep = 0;
 
-/* ================================
-   TRANSLATIONS
-================================ */
 const T = {
-
-  title: {
-    en: "HeyJim",
-    pt: "HeyJim"
+  brand:       { en: "HeyJim",   pt: "HeyJim" },
+  obTitle:     { en: "May is Mental Health\nAwareness Month",
+                 pt: "Maio é o Mês de\nConsciência da Saúde Mental" },
+  obMonth:     { en: "🌿 Green Ribbon Month",
+                 pt: "🌿 Mês do Laço Verde" },
+  obDesc1:     { en: "A global movement to raise awareness, break stigma, and remind everyone that mental health is just as important as physical health.",
+                 pt: "Um movimento global para aumentar a consciência, quebrar estigmas e lembrar a todos que a saúde mental é tão importante quanto a saúde física." },
+  obNext1:     { en: "Learn more →",   pt: "Saiba mais →" },
+  obFactTitle: { en: "Did you know?",  pt: "Você sabia?" },
+  obFacts: {
+    en: ["1 in 4 people will face a mental health challenge", "Half of all conditions begin before age 14", "Only 1 in 3 people seek help", "Recovery is possible — and common"],
+    pt: ["1 em 4 pessoas enfrenta desafios de saúde mental", "Metade das condições começa antes dos 14 anos", "Apenas 1 em 3 pessoas busca ajuda", "A recuperação é possível — e comum"]
   },
-
-  subtitle: {
-    en: "May: Mental Awareness Month",
-    pt: "Maio: Mês da Conscientização da Saúde Mental"
+  obDesc2:     { en: "Talking about it is the first step. That's why Jim is here.",
+                 pt: "Falar sobre isso é o primeiro passo. É por isso que Jim está aqui." },
+  obNext2:     { en: "Meet Jim →",     pt: "Conhecer o Jim →" },
+  obJimTitle:  { en: "Hi, I'm Jim 👋",  pt: "Oi, eu sou o Jim 👋" },
+  obJimDesc:   { en: "I'm your emotional check-in companion. No judgement, no pressure. Just a safe, guided space for you to explore how you're feeling — in about 3–5 minutes.",
+                 pt: "Sou seu companheiro de check-in emocional. Sem julgamentos, sem pressão. Apenas um espaço seguro e guiado para você explorar como está se sentindo — em cerca de 3 a 5 minutos." },
+  obStart:     { en: "Let's begin",    pt: "Vamos começar" },
+  loginTitle:  { en: "What's your name?",   pt: "Qual é o seu nome?" },
+  loginSub:    { en: "I'd love to know who I'm talking with.",
+                 pt: "Adoraria saber com quem estou conversando." },
+  loginPlaceholder: { en: "Your name…",    pt: "Seu nome…" },
+  loginBtn:    { en: "Continue →",         pt: "Continuar →" },
+  feelingQ:    { en: "How have you been feeling lately?",
+                 pt: "Como você tem se sentido ultimamente?" },
+  emo: {
+    anxious:  { en: { label: "Anxious",    emoji: "😟" }, pt: { label: "Ansioso",    emoji: "😟" } },
+    sad:      { en: { label: "Sad",        emoji: "😔" }, pt: { label: "Triste",     emoji: "😔" } },
+    stressed: { en: { label: "Stressed",   emoji: "😤" }, pt: { label: "Estressado", emoji: "😤" } },
+    notsure:  { en: { label: "Not sure",   emoji: "🤔" }, pt: { label: "Não sei",   emoji: "🤔" } }
   },
-
-  onboarding: {
-    en: "Mental Health Awareness Month exists to raise awareness, reduce stigma and encourage emotional well-being.",
-    pt: "O Mês da Saúde Mental existe para aumentar a conscientização, reduzir estigmas e promover bem-estar emocional."
+  anxThoughtsBodyQ: {
+    en: "Is the anxiety more in your thoughts or in your body?",
+    pt: "A ansiedade está mais nos seus pensamentos ou no seu corpo?"
   },
-
-  start: { en:"Start", pt:"Começar" },
-
-  loginPlaceholder: { en:"Enter your name", pt:"Digite seu nome" },
-
-  loginBtn: { en:"Start", pt:"Iniciar" },
-
-  feeling: {
-    en:"How have you been feeling lately?",
-    pt:"Como você tem se sentido ultimamente?"
+  thoughts:  { en: { label: "My thoughts\nare racing",    emoji: "💭" },
+               pt: { label: "Meus pensamentos\nestão acelerados", emoji: "💭" } },
+  body:      { en: { label: "My body feels\ntense",       emoji: "🫀" },
+               pt: { label: "Meu corpo está\ntenso",       emoji: "🫀" } },
+  groundingIntro: {
+    en: "Let's do a quick grounding exercise. Look around and find objects of these colors:",
+    pt: "Vamos fazer um exercício de ancoragem. Olhe ao redor e encontre objetos dessas cores:"
   },
-
-  anxious: { en:"Anxious", pt:"Ansioso" },
-  sad: { en:"Sad", pt:"Triste" },
-  stressed: { en:"Stressed", pt:"Estressado" },
-  notsure: { en:"Not sure", pt:"Não sei" },
-
-  thoughts: { en:"Thoughts", pt:"Pensamentos" },
-  body: { en:"Body", pt:"Corpo" },
-
-  continue: { en:"Continue", pt:"Continuar" },
-
-  cvv: { en:"CVV Support", pt:"Apoio CVV" },
-
-  restart: { en:"Restart", pt:"Recomeçar" }
+  groundingColors: {
+    en: ["Blue",   "Green",  "Red"],
+    pt: ["Azul",   "Verde",  "Vermelho"]
+  },
+  groundingFound: {
+    en: ["Found it! ✓ Great!",   "Nice one! ✓",    "You did it! ✓"],
+    pt: ["Encontrei! ✓ Ótimo!",  "Que legal! ✓",   "Conseguiu! ✓"]
+  },
+  groundingBtn: { en: "I found it →",  pt: "Encontrei →" },
+  groundingDone: {
+    en: "Your mind is starting to anchor to the present. That's powerful. 🌿",
+    pt: "Sua mente está começando a se ancorar no presente. Isso é poderoso. 🌿"
+  },
+  sadDurationQ: {
+    en: "Has this sadness been around for a while?",
+    pt: "Essa tristeza já dura algum tempo?"
+  },
+  sadShort:    { en: { label: "Just today",      emoji: "☁️" }, pt: { label: "Só hoje",         emoji: "☁️" } },
+  sadLong:     { en: { label: "A while now",     emoji: "🌧️" }, pt: { label: "Há algum tempo",  emoji: "🌧️" } },
+  sadShortMsg: {
+    en: "That's okay. Some days are just harder. What usually lifts your mood a little?",
+    pt: "Tudo bem. Alguns dias são simplesmente mais difíceis. O que normalmente melhora um pouco seu humor?"
+  },
+  sadLongMsg: {
+    en: "I hear you. When sadness stays for a while, it's important to reach out for support. You don't have to carry this alone.",
+    pt: "Eu entendo. Quando a tristeza persiste por um tempo, é importante buscar apoio. Você não precisa carregar isso sozinho."
+  },
+  sadContinue: { en: "Continue →",       pt: "Continuar →" },
+  stressQ: {
+    en: "What's weighing on you most?",
+    pt: "O que está pesando mais para você?"
+  },
+  stressWork:  { en: { label: "Work &\nresponsibilities", emoji: "💼" },
+                 pt: { label: "Trabalho &\nresponsabilidades", emoji: "💼" } },
+  stressAll:   { en: { label: "Everything\nat once",         emoji: "🌊" },
+                 pt: { label: "Tudo ao\nmesmo tempo",        emoji: "🌊" } },
+  stressWorkMsg: {
+    en: "Work stress is real. Let's take one breath together. In for 4 counts… hold for 4… out for 6. Feel any different?",
+    pt: "O estresse do trabalho é real. Vamos respirar juntos. Inspire por 4 tempos... segure por 4... expire por 6. Sentiu diferença?"
+  },
+  stressAllMsg: {
+    en: "When everything feels like too much, we can only handle one thing at a time. What's the one smallest thing you could let go of today?",
+    pt: "Quando tudo parece demais, só conseguimos lidar com uma coisa por vez. Qual é a menor coisa que você poderia deixar ir hoje?"
+  },
+  notSureQ: {
+    en: "That's completely fine. Let me ask — how's your energy level today?",
+    pt: "Isso é completamente normal. Me diga — como está seu nível de energia hoje?"
+  },
+  energyHigh:  { en: { label: "Pretty good,\nactually",   emoji: "⚡" }, pt: { label: "Bem, na\nverdade",    emoji: "⚡" } },
+  energyLow:   { en: { label: "Running on\nempty",        emoji: "🪫" }, pt: { label: "No limite",             emoji: "🪫" } },
+  energyHighMsg: {
+    en: "Love that! Even on good-energy days, checking in with yourself is a great habit. Keep it up. 🌟",
+    pt: "Que ótimo! Mesmo nos dias com boa energia, fazer check-in consigo mesmo é um ótimo hábito. Continue assim. 🌟"
+  },
+  energyLowMsg: {
+    en: "Low energy is your body asking for rest. No need to push through — just being here today already counts. 🌿",
+    pt: "Baixa energia é seu corpo pedindo descanso. Não há necessidade de forçar — só de estar aqui hoje já conta. 🌿"
+  },
+  continueBtn: { en: "That's true →",    pt: "É verdade →" },
+  endTitle:    { en: "I'm proud of you for showing up today",
+                 pt: "Tenho orgulho de você por ter aparecido hoje" },
+  endSub: {
+    en: "Checking in with yourself takes courage. Take it one step at a time. 🌤️",
+    pt: "Fazer check-in consigo mesmo exige coragem. Vá um passo de cada vez. 🌤️"
+  },
+  cvv:         { en: "CVV Support Line",     pt: "Apoio CVV" },
+  crisis:      { en: "Global Crisis Lines",  pt: "Linhas de crise globais" },
+  restart:     { en: "Start over",           pt: "Recomeçar" },
+  talkAgain:   { en: "Talk again tomorrow",  pt: "Falar amanhã" },
+  yes:         { en: "Yes",   pt: "Sim" },
+  no:          { en: "No",    pt: "Não" }
 };
 
-/* ================================
-   TRANSLATION HELPER
-================================ */
-function t(obj){
-  return obj[lang === "EN" ? "en" : "pt"];
+function t(obj, sub) {
+  const base = obj[lang];
+  return sub ? base[sub] : base;
 }
 
-/* ================================
-   INIT UI
-================================ */
-function init(){
-  document.getElementById("title").innerText = t(T.title);
-  document.getElementById("subtitle").innerText = t(T.subtitle);
-  document.getElementById("onboarding").innerText = t(T.onboarding);
-  document.getElementById("startBtn").innerText = t(T.start);
-  document.getElementById("loginBtn").innerText = t(T.loginBtn);
+function initUI() {
+  document.getElementById("ob-title").innerText    = t(T.obTitle);
+  document.getElementById("ob-month").innerText    = t(T.obMonth);
+  document.getElementById("ob-desc1").innerText    = t(T.obDesc1);
+  document.getElementById("ob-next1").innerText    = t(T.obNext1);
+  document.getElementById("ob-fact-title").innerText = t(T.obFactTitle);
+  document.getElementById("ob-desc2").innerText    = t(T.obDesc2);
+  document.getElementById("ob-next2").innerText    = t(T.obNext2);
+  document.getElementById("ob-jim-title").innerText = t(T.obJimTitle);
+  document.getElementById("ob-jim-desc").innerText  = t(T.obJimDesc);
+  document.getElementById("ob-start").innerText    = t(T.obStart);
+  document.getElementById("login-title").innerText = t(T.loginTitle);
+  document.getElementById("login-sub").innerText   = t(T.loginSub);
   document.getElementById("nameInput").placeholder = t(T.loginPlaceholder);
-}
-init();
+  document.getElementById("loginBtn").innerText    = t(T.loginBtn);
 
-/* ================================
-   MUSIC FIX (REAL WORKING)
-================================ */
-function unlockMusic(){
+  const factsEl = document.getElementById("ob-facts");
+  factsEl.innerHTML = "";
+  t(T.obFacts).forEach(f => {
+    const pill = document.createElement("div");
+    pill.className = "fact-pill";
+    pill.innerText = f;
+    factsEl.appendChild(pill);
+  });
+}
+initUI();
+
+function toggleLang() {
+  lang = lang === "en" ? "pt" : "en";
+  document.getElementById("langBtn").title = lang === "en" ? "Português" : "English";
+  initUI();
+}
+
+let musicUnlocked = false;
+function unlockMusic() {
+  if (musicUnlocked) return;
+  musicUnlocked = true;
   const a = document.getElementById("music");
-  a.src = "https://docs.google.com/uc?export=open&id=1Td3OLZVvYA-kgyzbUiFAqSvdazzsZbHs";
-  a.play().catch(()=>{});
-  music = true;
+  a.volume = 0.35;
+  a.play().then(() => { musicPlaying = true; document.getElementById("musicBtn").classList.add("active"); })
+           .catch(() => {});
 }
 
-function toggleMusic(){
+function toggleMusic() {
   const a = document.getElementById("music");
-  if(music) a.pause();
-  else a.play().catch(()=>{});
-  music = !music;
+  if (!musicUnlocked) { unlockMusic(); return; }
+  if (musicPlaying) { a.pause(); musicPlaying = false; document.getElementById("musicBtn").classList.remove("active"); }
+  else              { a.play();  musicPlaying = true;  document.getElementById("musicBtn").classList.add("active"); }
 }
 
-/* ================================
-   LANGUAGE
-================================ */
-function toggleLang(){
-  lang = lang === "EN" ? "PT" : "EN";
-  init();
+function obNext() {
+  obStep++;
+  document.querySelectorAll(".onboarding-step").forEach((s,i) => {
+    s.classList.toggle("active", i === obStep);
+  });
+  document.querySelectorAll(".dot").forEach((d,i) => {
+    d.classList.toggle("active", i === obStep);
+  });
 }
 
-/* ================================
-   NAVIGATION
-================================ */
-function goLogin(){
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById("screen-" + id).classList.add("active");
+}
+
+function goLogin() {
   unlockMusic();
-  document.getElementById("home").style.display = "none";
-  document.getElementById("login").style.display = "block";
+  showScreen("login");
 }
 
-/* ================================
-   LOGIN
-================================ */
-function login(){
-  const name = document.getElementById("nameInput").value;
+function login() {
+  const name = document.getElementById("nameInput").value.trim();
+  if (!name) return;
+  user = name;
+  showScreen("chat");
 
   fetch(API + "?action=login&name=" + encodeURIComponent(name))
-  .then(r=>r.json())
-  .then(d=>{
+    .catch(() => {});
 
-    user = name;
-    emotion = d.lastEmotion || "";
-
-    document.getElementById("login").style.display = "none";
-    document.getElementById("chat").style.display = "block";
-
-    show(t(T.feeling), [
-      {label:t(T.anxious), action: anxiousFlow},
-      {label:t(T.sad), action: sadFlow},
-      {label:t(T.stressed), action: stressFlow},
-      {label:t(T.notsure), action: neutralFlow}
-    ]);
-  });
+  askFeeling();
 }
 
-/* ================================
-   CHAT UI
-================================ */
-function show(text, options){
-  document.getElementById("text").innerText = text;
-  const box = document.getElementById("options");
-  box.innerHTML = "";
-
-  options.forEach(o=>{
-    const b = document.createElement("button");
-    b.innerText = o.label;
-    b.onclick = o.action;
-    box.appendChild(b);
-  });
+function chat(content) {
+  const cc = document.getElementById("chat-content");
+  cc.innerHTML = "";
+  cc.appendChild(content);
+  content.style.display = "flex";
+  content.style.flexDirection = "column";
+  content.style.flex = "1";
+  content.style.animation = "fadeUp 0.35s ease both";
 }
 
-/* ================================
-   ANXIETY TREE
-================================ */
-function anxiousFlow(){
+function buildChat(question, choices, note) {
+  const wrap = document.createElement("div");
+
+  const q = document.createElement("h2");
+  q.style.marginBottom = "6px";
+  q.style.textAlign = "center";
+  q.innerText = question;
+  wrap.appendChild(q);
+
+  if (note) {
+    const n = document.createElement("p");
+    n.className = "prose";
+    n.style.marginBottom = "4px";
+    n.innerText = note;
+    wrap.appendChild(n);
+  }
+
+  const spacer = document.createElement("div");
+  spacer.className = "spacer";
+  wrap.appendChild(spacer);
+
+  const grid = document.createElement("div");
+  grid.className = choices.length <= 2 ? "choice-grid" : "choice-grid";
+  if (choices.length === 1) grid.classList.add("single");
+  wrap.appendChild(grid);
+
+  choices.forEach(c => {
+    const btn = document.createElement("button");
+    btn.className = "choice-btn";
+    if (c.emoji) {
+      const em = document.createElement("span");
+      em.className = "emoji";
+      em.innerText = c.emoji;
+      btn.appendChild(em);
+    }
+    btn.appendChild(document.createTextNode(c.label));
+    btn.onclick = c.action;
+    grid.appendChild(btn);
+  });
+
+  return wrap;
+}
+
+function buildMessage(emoji, title, body, buttons) {
+  const wrap = document.createElement("div");
+  wrap.style.flex = "1";
+  wrap.style.display = "flex";
+  wrap.style.flexDirection = "column";
+
+  const card = document.createElement("div");
+  card.className = "end-card";
+  card.innerHTML = '<div class="big-emoji">' + emoji + '</div>';
+  const h = document.createElement("h2");
+  h.innerText = title;
+  card.appendChild(h);
+  if (body) {
+    const p = document.createElement("p");
+    p.className = "prose";
+    p.style.marginTop = "8px";
+    p.innerText = body;
+    card.appendChild(p);
+  }
+  wrap.appendChild(card);
+
+  const sp = document.createElement("div");
+  sp.className = "spacer";
+  wrap.appendChild(sp);
+
+  buttons.forEach(b => {
+    const btn = document.createElement("button");
+    btn.className = b.primary ? "btn btn-primary" : "btn btn-ghost";
+    btn.style.marginTop = "10px";
+    btn.innerText = b.label;
+    btn.onclick = b.action;
+    wrap.appendChild(btn);
+  });
+
+  return wrap;
+}
+
+function askFeeling() {
+  const c = buildChat(t(T.feelingQ), [
+    { emoji: t(T.emo.anxious,  lang).emoji, label: t(T.emo.anxious,  lang).label, action: anxiousFlow },
+    { emoji: t(T.emo.sad,      lang).emoji, label: t(T.emo.sad,      lang).label, action: sadFlow },
+    { emoji: t(T.emo.stressed, lang).emoji, label: t(T.emo.stressed, lang).label, action: stressFlow },
+    { emoji: t(T.emo.notsure,  lang).emoji, label: t(T.emo.notsure,  lang).label, action: notSureFlow }
+  ]);
+  chat(c);
+}
+
+/* ---- ANXIOUS ---- */
+function anxiousFlow() {
   emotion = "anxious";
-
-  show(lang==="EN"
-    ?"Is it in your thoughts or your body?"
-    :"Está nos seus pensamentos ou no seu corpo?",
-  [
-    {label:t(T.thoughts), action: grounding},
-    {label:t(T.body), action: grounding}
+  const c = buildChat(t(T.anxThoughtsBodyQ), [
+    { emoji: t(T.thoughts, lang).emoji, label: t(T.thoughts, lang).label, action: startGrounding },
+    { emoji: t(T.body,     lang).emoji, label: t(T.body,     lang).label, action: startGrounding }
   ]);
+  chat(c);
 }
 
-/* ================================
-   GROUNDING GAME
-================================ */
-function grounding(){
-  show(lang==="EN"?"Find something BLUE":"Encontre algo AZUL",[{
-    label:"OK", action: step2
-  }]);
+/* ---- GROUNDING GAME ---- */
+let groundStep = 0;
+const COLORS = [
+  { bg: "#5b9bd5", text: "#fff", shadow: "rgba(91,155,213,0.4)" },
+  { bg: "#4caf74", text: "#fff", shadow: "rgba(76,175,116,0.4)" },
+  { bg: "#e05252", text: "#fff", shadow: "rgba(224,82,82,0.4)"  }
+];
+
+function startGrounding() {
+  groundStep = 0;
+  showGroundStep();
 }
 
-function step2(){
-  show(lang==="EN"?"Find something GREEN":"Encontre algo VERDE",[{
-    label:"OK", action: step3
-  }]);
+function showGroundStep() {
+  const colorNames = t(T.groundingColors);
+  const foundTexts = t(T.groundingFound);
+  const col = COLORS[groundStep];
+
+  const wrap = document.createElement("div");
+  wrap.style.flex = "1";
+  wrap.style.display = "flex";
+  wrap.style.flexDirection = "column";
+
+  const intro = document.createElement("p");
+  intro.className = "prose";
+  intro.style.textAlign = "center";
+  intro.style.marginBottom = "0";
+  intro.innerText = t(T.groundingIntro);
+  wrap.appendChild(intro);
+
+  const target = document.createElement("div");
+  target.className = "color-target";
+  target.style.background = col.bg;
+  target.style.color = col.text;
+  target.style.boxShadow = "0 12px 32px " + col.shadow;
+  target.innerHTML = '<span style="font-size:36px">👁️</span><span class="color-label">' + colorNames[groundStep] + '</span>';
+
+  const badge = document.createElement("div");
+  badge.className = "found-badge";
+  badge.innerText = "✓";
+  target.appendChild(badge);
+  wrap.appendChild(target);
+
+  const dotsWrap = document.createElement("div");
+  dotsWrap.style.display = "flex";
+  dotsWrap.style.justifyContent = "center";
+  dotsWrap.style.gap = "8px";
+  dotsWrap.style.margin = "0 0 8px";
+  for (let i = 0; i < 3; i++) {
+    const d = document.createElement("div");
+    d.style.cssText = "width:8px;height:8px;border-radius:50%;transition:all 0.3s;background:" + (i <= groundStep ? col.bg : "rgba(80,50,20,0.15)");
+    dotsWrap.appendChild(d);
+  }
+  wrap.appendChild(dotsWrap);
+
+  const sp = document.createElement("div");
+  sp.className = "spacer";
+  wrap.appendChild(sp);
+
+  const foundBtn = document.createElement("button");
+  foundBtn.className = "btn btn-primary";
+  foundBtn.innerText = t(T.groundingBtn);
+  foundBtn.onclick = () => {
+    badge.classList.add("show");
+    foundBtn.disabled = true;
+    foundBtn.style.opacity = "0.5";
+    setTimeout(() => {
+      groundStep++;
+      if (groundStep < 3) showGroundStep();
+      else groundingDone();
+    }, 800);
+  };
+  wrap.appendChild(foundBtn);
+
+  chat(wrap);
 }
 
-function step3(){
-  show(lang==="EN"?"Find something RED":"Encontre algo VERMELHO",[{
-    label:"Done", action: end
-  }]);
+function groundingDone() {
+  const w = buildMessage("🌿", t(T.groundingDone), null, [
+    { label: t(T.continueBtn), primary: true, action: endFlow }
+  ]);
+  chat(w);
 }
 
-/* ================================
-   SAD FLOW
-================================ */
-function sadFlow(){
+/* ---- SAD ---- */
+function sadFlow() {
   emotion = "sad";
-
-  show(lang==="EN"
-    ?"Has this been happening for a while?"
-    :"Isso vem acontecendo há um tempo?",
-  [
-    {label:"Yes", action:end},
-    {label:"No", action:end}
+  const c = buildChat(t(T.sadDurationQ), [
+    { emoji: t(T.sadShort, lang).emoji, label: t(T.sadShort, lang).label, action: sadShortPath },
+    { emoji: t(T.sadLong,  lang).emoji, label: t(T.sadLong,  lang).label, action: sadLongPath }
   ]);
+  chat(c);
 }
 
-/* ================================
-   STRESS FLOW
-================================ */
-function stressFlow(){
+function sadShortPath() {
+  const w = buildMessage("☁️", t(T.sadShortMsg), null, [
+    { label: t(T.sadContinue), primary: true, action: endFlow }
+  ]);
+  chat(w);
+}
+
+function sadLongPath() {
+  const w = buildMessage("🤝", t(T.sadLongMsg), null, [
+    { label: t(T.sadContinue), primary: true, action: endFlow }
+  ]);
+  chat(w);
+}
+
+/* ---- STRESS ---- */
+function stressFlow() {
   emotion = "stressed";
-
-  show(lang==="EN"
-    ?"What feels heavier?"
-    :"O que está mais pesado?",
-  [
-    {label:"Work", action:end},
-    {label:"Everything", action:end}
+  const c = buildChat(t(T.stressQ), [
+    { emoji: t(T.stressWork, lang).emoji, label: t(T.stressWork, lang).label, action: stressWorkPath },
+    { emoji: t(T.stressAll,  lang).emoji, label: t(T.stressAll,  lang).label, action: stressAllPath }
   ]);
+  chat(c);
 }
 
-/* ================================
-   NEUTRAL
-================================ */
-function neutralFlow(){
-  show(lang==="EN"
-    ?"That's okay. Let's continue."
-    :"Tudo bem. Vamos continuar.",
-  [{label:t(T.continue), action:end}]);
+function stressWorkPath() {
+  const w = buildMessage("🫁", t(T.stressWorkMsg), null, [
+    { label: t(T.continueBtn), primary: true, action: endFlow }
+  ]);
+  chat(w);
 }
 
-/* ================================
-   ENDING
-================================ */
-function end(){
-
-  fetch(API + "?action=update&name="+encodeURIComponent(user)+"&emotion="+emotion+"&activity=end");
-
-  show(
-    lang==="EN"
-      ?"I'm proud of you for being here today 🌤️"
-      :"Tenho orgulho de você por estar aqui hoje 🌤️",
-    [
-      {label:t(T.cvv), action:()=>window.open("https://www.cvv.org.br/")},
-      {label:t(T.restart), action:()=>location.reload()}
-    ]
-  );
+function stressAllPath() {
+  const w = buildMessage("🌊", t(T.stressAllMsg), null, [
+    { label: t(T.continueBtn), primary: true, action: endFlow }
+  ]);
+  chat(w);
 }
+
+/* ---- NOT SURE ---- */
+function notSureFlow() {
+  emotion = "notsure";
+  const c = buildChat(t(T.notSureQ), [
+    { emoji: t(T.energyHigh, lang).emoji, label: t(T.energyHigh, lang).label, action: energyHighPath },
+    { emoji: t(T.energyLow,  lang).emoji, label: t(T.energyLow,  lang).label, action: energyLowPath }
+  ]);
+  chat(c);
+}
+
+function energyHighPath() {
+  const w = buildMessage("⚡", t(T.energyHighMsg), null, [
+    { label: t(T.continueBtn), primary: true, action: endFlow }
+  ]);
+  chat(w);
+}
+
+function energyLowPath() {
+  const w = buildMessage("🪫", t(T.energyLowMsg), null, [
+    { label: t(T.continueBtn), primary: true, action: endFlow }
+  ]);
+  chat(w);
+}
+
+/* ---- END ---- */
+function endFlow() {
+  fetch(API + "?action=update&name=" + encodeURIComponent(user) + "&emotion=" + emotion + "&activity=end")
+    .catch(() => {});
+
+  const wrap = document.createElement("div");
+  wrap.style.flex = "1";
+  wrap.style.display = "flex";
+  wrap.style.flexDirection = "column";
+
+  const card = document.createElement("div");
+  card.className = "end-card";
+  card.innerHTML = '<div class="big-emoji">🌤️</div>';
+
+  const h = document.createElement("h2");
+  h.innerText = t(T.endTitle);
+  card.appendChild(h);
+
+  const p = document.createElement("p");
+  p.className = "prose";
+  p.style.marginTop = "8px";
+  p.innerText = t(T.endSub);
+  card.appendChild(p);
+
+  const divider = document.createElement("div");
+  divider.style.cssText = "margin:14px 0 8px; border-top: 1px solid rgba(80,50,20,0.1);";
+  card.appendChild(divider);
+
+  const linksLabel = document.createElement("p");
+  linksLabel.style.cssText = "font-size:12px; color:var(--text-soft); opacity:0.7; margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;";
+  linksLabel.innerText = lang === "en" ? "Support resources" : "Recursos de apoio";
+  card.appendChild(linksLabel);
+
+  const cvvBtn = document.createElement("a");
+  cvvBtn.className = "link-btn";
+  cvvBtn.href = "https://www.cvv.org.br/";
+  cvvBtn.target = "_blank";
+  cvvBtn.innerText = t(T.cvv);
+  card.appendChild(cvvBtn);
+
+  const crisisBtn = document.createElement("a");
+  crisisBtn.className = "link-btn";
+  crisisBtn.href = "https://www.iasp.info/resources/Crisis_Centres/";
+  crisisBtn.target = "_blank";
+  crisisBtn.innerText = t(T.crisis);
+  card.appendChild(crisisBtn);
+
+  wrap.appendChild(card);
+
+  const sp = document.createElement("div");
+  sp.className = "spacer";
+  wrap.appendChild(sp);
+
+  const restartBtn = document.createElement("button");
+  restartBtn.className = "btn btn-ghost";
+  restartBtn.style.marginTop = "12px";
+  restartBtn.innerText = t(T.restart);
+  restartBtn.onclick = () => location.reload();
+  wrap.appendChild(restartBtn);
+
+  chat(wrap);
+}
+
+document.getElementById("nameInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") login();
+});
 </script>
-
 </body>
 </html>
