@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MindSky</title>
+
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(180deg, #6EC6FF, #EAF6FF);
+      transition: background 1s ease;
+    }
+
+    /* ☁️ CLOUDS */
+    .cloud {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      opacity: 0.6;
+      filter: blur(2px);
+      animation: float linear infinite;
+    }
+
+    .c1 { width:120px;height:60px;top:10%;animation-duration:80s;}
+    .c2 { width:180px;height:90px;top:40%;animation-duration:120s;}
+    .c3 { width:140px;height:70px;top:70%;animation-duration:100s;}
+
+    @keyframes float {
+      from { transform: translateX(-200px); }
+      to { transform: translateX(120vw); }
+    }
+
+    /* APP */
+    .app {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      padding: 30px 25px;
+
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+
+      gap: 10px;
+
+      border-radius: 25px;
+      backdrop-filter: blur(15px);
+      background: rgba(255,255,255,0.25);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+
+      text-align: center;
+      z-index: 2;
+    }
+
+    input, button {
+      width: 100%;
+      max-width: 320px;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      margin-top: 8px;
+      display: block;
+    }
+
+    button {
+      background: linear-gradient(45deg,#FFD54F,#FFB300);
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      transform: scale(1.03);
+    }
+
+    #text {
+      margin: 20px 0;
+      min-height: 70px;
+      max-width: 320px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    #options {
+      width: 100%;
+      max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* TOP BUTTONS */
+    .topBtns {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      gap: 5px;
+    }
+
+    .miniBtn {
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.6);
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    /* 🤖 JIM */
+    .jimWrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 5px;
+      animation: floatJim 3s ease-in-out infinite;
+    }
+
+    .jim {
+      font-size: 75px;
+      text-shadow: 0 0 15px rgba(255,255,255,0.7);
+      transition: transform 0.3s;
+    }
+
+    @keyframes floatJim {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    h2 {
+      margin: 5px 0 10px 0;
+    }
+
+  </style>
+</head>
+
+<body>
+
+<div class="cloud c1"></div>
+<div class="cloud c2"></div>
+<div class="cloud c3"></div>
+
+<div class="app">
+
+  <div class="topBtns">
+    <div class="miniBtn" onclick="toggleLang()">🌐</div>
+    <div class="miniBtn" onclick="toggleMusic()">🎵</div>
+  </div>
+
+  <div class="jimWrap">
+    <div class="jim" id="jim">🤖</div>
+  </div>
+
+  <h2>🌤️Jim🌤️</h2>
+
+  <div id="login">
+    <input id="nameInput" placeholder="Enter your full name">
+    <button onclick="login()">Start</button>
+  </div>
+
+  <div id="chat" style="display:none;">
+    <div id="text"></div>
+    <div id="options"></div>
+  </div>
+
+</div>
+
+<audio id="bgMusic" loop>
+  <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_115b9b0b4e.mp3">
+</audio>
+
+<script>
+const API = "https://script.google.com/macros/s/AKfycbyqoVUlQyZHE9J51BKVElQTIx_i7ZBZFZ5fvknwqFr9Nh0hz42RrI0Zp5zvW0LCKpXa4g/exec";
+
+let userName = "";
+let lastEmotion = "";
+let lang = "EN";
+let musicOn = false;
+
+/* 🌐 TEXTOS */
+const T = {
+  EN: {
+    welcome: (n)=>`Nice to meet you, ${n}. 🌤️`,
+    back: (n,e)=>`Welcome back ${n}. Last time you felt ${e}.`,
+    feeling: "How have you been feeling lately?",
+    anxious: "Anxious",
+    sad: "Sad",
+    stressed: "Stressed",
+    notsure: "Not sure",
+    thanks: "Thanks for sharing. Let's understand this better.",
+    continue: "Continue",
+    game: "Play a short game",
+    relax: "Just talk",
+    end: "I'm really glad you stayed here today 🌤️",
+    restart: "Restart"
+  },
+  PT: {
+    welcome: (n)=>`Prazer em te conhecer, ${n}. 🌤️`,
+    back: (n,e)=>`Bem-vindo de volta ${n}. Última vez você se sentiu ${e}.`,
+    feeling: "Como você tem se sentido ultimamente?",
+    anxious: "Ansioso",
+    sad: "Triste",
+    stressed: "Estressado",
+    notsure: "Não sei",
+    thanks: "Obrigado por compartilhar. Vamos entender melhor isso.",
+    continue: "Continuar",
+    game: "Jogar algo rápido",
+    relax: "Só conversar",
+    end: "Fico feliz que você ficou aqui hoje 🌤️",
+    restart: "Recomeçar"
+  }
+};
+
+/* 🎵 */
+function toggleMusic(){
+  const a = document.getElementById("bgMusic");
+  musicOn ? a.pause() : a.play();
+  musicOn = !musicOn;
+}
+
+/* 🌐 */
+function toggleLang(){
+  lang = (lang === "EN") ? "PT" : "EN";
+}
+
+/* 🎨 BACKGROUND */
+function setBackground(mood){
+  if(mood === "sad"){
+    document.body.style.background = "linear-gradient(180deg, #5C6BC0, #1A237E)";
+  } else if(mood === "anxious"){
+    document.body.style.background = "linear-gradient(180deg, #FFB74D, #E65100)";
+  } else if(mood === "stressed"){
+    document.body.style.background = "linear-gradient(180deg, #EF5350, #B71C1C)";
+  } else {
+    document.body.style.background = "linear-gradient(180deg, #6EC6FF, #EAF6FF)";
+  }
+}
+
+/* 🤖 JIM */
+function setMood(mood){
+  const jim = document.getElementById("jim");
+  if(mood === "sad") jim.style.transform = "scale(0.9)";
+  else if(mood === "anxious") jim.style.transform = "scale(1.1)";
+  else jim.style.transform = "scale(1)";
+}
+
+/* LOGIN */
+function login(){
+  const name = document.getElementById("nameInput").value;
+
+  fetch(API + "?action=login&name=" + encodeURIComponent(name))
+  .then(r=>r.json())
+  .then(d=>{
+    userName = name;
+    lastEmotion = d.lastEmotion || "";
+
+    document.getElementById("login").style.display="none";
+    document.getElementById("chat").style.display="block";
+
+    if(d.status==="returning"){
+      setBackground(lastEmotion);
+      show(T[lang].back(d.firstName, lastEmotion), [
+        {label:"OK", action: ask}
+      ]);
+    } else {
+      show(T[lang].welcome(d.firstName), [
+        {label:"OK", action: ask}
+      ]);
+    }
+  });
+}
+
+/* UI */
+function show(text, opts){
+  document.getElementById("text").innerText = text;
+  const d = document.getElementById("options");
+  d.innerHTML="";
+
+  opts.forEach(o=>{
+    const b=document.createElement("button");
+    b.innerText=o.label;
+    b.onclick=o.action;
+    d.appendChild(b);
+  });
+}
+
+/* FLOW PRINCIPAL */
+function ask(){
+  show(T[lang].feeling, [
+    {label:T[lang].anxious, action:()=>anxiousFlow()},
+    {label:T[lang].sad, action:()=>sadFlow()},
+    {label:T[lang].stressed, action:()=>stressFlow()},
+    {label:T[lang].notsure, action:()=>notSureFlow()}
+  ]);
+}
+
+/* 🧠 ANXIOUS */
+function anxiousFlow(){
+  setMood("anxious"); setBackground("anxious");
+
+  show("Is your anxiety more in your thoughts or your body?", [
+    {label:"Thoughts", action: anxiousThoughts},
+    {label:"Body", action: anxiousBody}
+  ]);
+}
+
+function anxiousThoughts(){
+  show("Your mind might be racing. Let's slow it down.", [
+    {label:"Breathing", action: breathing},
+    {label:T[lang].game, action: game}
+  ]);
+}
+
+function anxiousBody(){
+  show("Your body is reacting. Let's calm it.", [
+    {label:"Breathing", action: breathing},
+    {label:T[lang].game, action: game}
+  ]);
+}
+
+/* 💙 SAD */
+function sadFlow(){
+  setMood("sad"); setBackground("sad");
+
+  show("Has this feeling been with you for a long time?", [
+    {label:"Yes", action: sadDeep},
+    {label:"No", action: reflect}
+  ]);
+}
+
+function sadDeep(){
+  show("That sounds heavy... you're not alone in this.", [
+    {label:T[lang].game, action: game},
+    {label:T[lang].continue, action: reflect}
+  ]);
+}
+
+/* 🔥 STRESS */
+function stressFlow(){
+  setMood("stressed"); setBackground("stressed");
+
+  show("What is stressing you the most?", [
+    {label:"Too many things", action: reflect},
+    {label:"People", action: reflect}
+  ]);
+}
+
+/* 🤍 NOT SURE */
+function notSureFlow(){
+  show("That's okay. We can figure it out slowly.", [
+    {label:T[lang].game, action: game},
+    {label:T[lang].continue, action: reflect}
+  ]);
+}
+
+/* 🌬️ BREATHING */
+function breathing(){
+  show("Breathe in slowly... now out...", [
+    {label:T[lang].continue, action: reflect}
+  ]);
+}
+
+/* 💭 REFLECTION */
+function reflect(){
+  show("You're doing your best. That matters more than you think.", [
+    {label:T[lang].game, action: game},
+    {label:T[lang].continue, action: end}
+  ]);
+}
+
+/* 🎮 GAME */
+function game(){
+  show("Find something BLUE 👀", [
+    {label:"Achei / Found", action: ()=>step2()}
+  ]);
+}
+
+function step2(){
+  show("Now find something GREEN 🌿", [
+    {label:"Achei / Found", action: ()=>step3()}
+  ]);
+}
+
+function step3(){
+  show("Now something RED ❤️", [
+    {label:"Done", action:end}
+  ]);
+}
+
+/* FINAL */
+function end(){
+  setBackground("normal");
+
+  fetch(API + "?action=update&name="+encodeURIComponent(userName)+"&emotion="+lastEmotion);
+
+  show(T[lang].end, [
+    {label:T[lang].restart, action:ask}
+  ]);
+}
+</script>
+
+</body>
+</html>
