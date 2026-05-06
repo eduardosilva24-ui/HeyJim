@@ -250,6 +250,11 @@
     <div id="chat-body" style="flex:1; display:flex; flex-direction:column; justify-content:center;">
       </div>
   </div>
+
+  <div class="screen" id="scr-final">
+    <div id="final-body" style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+    </div>
+  </div>
 </div>
 
 <audio id="bgm" loop src="https://docs.google.com/uc?export=open&id=1Td3OLZVvYA-kgyzbUiFAqSvdazzsZbHs"></audio>
@@ -1269,21 +1274,59 @@ async function finishSession() {
   
   const timeSpent = Math.round((new Date() - state.timeStart) / 60000);
   
-  const body = document.getElementById('chat-body');
-  body.innerHTML = `
+  // Navega para a tela final
+  nextScreen('scr-final');
+  
+  const finalBody = document.getElementById('final-body');
+  finalBody.innerHTML = `
     <div class="jim-icon">🌤️</div>
     <h2>Orgulho de você, ${state.user}.</h2>
     <p class="prose">Você dedicou cerca de ${timeSpent} minutos para cuidar de si mesmo. Isso é mais do que a maioria das pessoas faz em uma semana inteira.</p>
-    <div class="end-card" style="margin-top:20px; padding:20px; background:rgba(168,218,188,0.2); border-radius:15px;">
-        <p class="prose" style="font-size:14px; color: #2d8c45;">"O que você escreveu sobre '${content.substring(0,20)}...' ficará guardado no seu coração."</p>
+    <div class="end-card" style="margin-top:20px; padding:20px; background:rgba(168,218,188,0.2); border-radius:15px; margin-bottom:20px;">
+        <p class="prose" style="font-size:14px; color: #2d8c45; margin-bottom:8px;">"O que você compartilhou ficará guardado no seu coração."</p>
+        <p class="prose" style="font-size:13px; color: var(--text-soft); font-style: italic;">Você é mais forte do que pensa. 💚</p>
     </div>
-    <button class="btn btn-primary" onclick="location.reload()">Fazer novo Check-in</button>
+    <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
+      <button class="btn btn-primary" onclick="backToWelcome()">Fazer novo Check-in</button>
+      <button class="btn btn-ghost" onclick="exitApp()">Sair</button>
+    </div>
     <p class="prose" style="font-size:11px; margin-top:15px;">Se precisar de ajuda urgente, ligue 188 (CVV).</p>
   `;
 }
 
 // Iniciar Onboarding
 document.getElementById('userName').addEventListener('keypress', e => { if(e.key === 'Enter') saveUser(); });
+
+function backToWelcome() {
+  // Reset do estado
+  state.user = "";
+  state.emotion = "";
+  state.path = "";
+  state.groundingIndex = 0;
+  state.journalContent = "";
+  state.timeStart = null;
+  state.breathingActive = false;
+  
+  // Limpa campos
+  document.getElementById('userName').value = '';
+  
+  // Volta para tela de bem-vindo
+  nextScreen('scr-welcome');
+}
+
+function exitApp() {
+  // Mostra mensagem de despedida
+  nextScreen('scr-final');
+  const finalBody = document.getElementById('final-body');
+  finalBody.innerHTML = `
+    <div class="jim-icon" style="animation: none; margin-bottom: 20px;">👋</div>
+    <h2>Até em breve!</h2>
+    <p class="prose">Lembre-se: você merece cuidado, especialmente de si mesmo.</p>
+    <p class="prose" style="margin-top:15px; font-size:14px; color: var(--gold-dark); font-weight:600;">Volte sempre que precisar. Estarei aqui. 💚</p>
+    <div style="height:30px;"></div>
+    <button class="btn btn-ghost" onclick="backToWelcome()">Voltar</button>
+  `;
+}
 
 </script>
 </body>
