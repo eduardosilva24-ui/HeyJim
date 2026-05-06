@@ -172,16 +172,30 @@ const T = {
   }
 };
 
-/* 🎵 */
+/* 🎵 MUSIC */
 function toggleMusic(){
   const a = document.getElementById("bgMusic");
-  musicOn ? a.pause() : a.play();
+  if(!a) return;
+
+  if(musicOn){
+    a.pause();
+  } else {
+    a.currentTime = 0;
+    a.play().catch(()=>{});
+  }
   musicOn = !musicOn;
 }
 
-/* 🌐 */
+/* 🌐 LANGUAGE */
 function toggleLang(){
   lang = (lang === "EN") ? "PT" : "EN";
+  refreshUI();
+}
+
+/* 🔁 REFRESH UI */
+function refreshUI(){
+  document.getElementById("options").innerHTML = "";
+  ask();
 }
 
 /* 🎨 BACKGROUND */
@@ -241,19 +255,19 @@ function show(text, opts){
 
   opts.forEach(o=>{
     const b=document.createElement("button");
-    b.innerText=o.label;
+    b.innerText = typeof o.label === "function" ? o.label() : o.label;
     b.onclick=o.action;
     d.appendChild(b);
   });
 }
 
-/* FLOW PRINCIPAL */
+/* FLOW */
 function ask(){
   show(T[lang].feeling, [
-    {label:T[lang].anxious, action: anxiousFlow},
-    {label:T[lang].sad, action: sadFlow},
-    {label:T[lang].stressed, action: stressFlow},
-    {label:T[lang].notsure, action: notSureFlow}
+    {label:()=>T[lang].anxious, action: anxiousFlow},
+    {label:()=>T[lang].sad, action: sadFlow},
+    {label:()=>T[lang].stressed, action: stressFlow},
+    {label:()=>T[lang].notsure, action: notSureFlow}
   ]);
 }
 
@@ -263,7 +277,7 @@ function anxiousFlow(){
   setBackground("anxious");
 
   show(lang==="EN"
-    ? "I hear you. Does it feel more in your thoughts or your body?"
+    ? "I hear you. Is it more in your thoughts or your body?"
     : "Entendi. Isso está mais nos seus pensamentos ou no seu corpo?",
   [
     {label:"Thoughts", action: anxiousThoughts},
@@ -273,21 +287,21 @@ function anxiousFlow(){
 
 function anxiousThoughts(){
   show(lang==="EN"
-    ? "Sometimes thoughts run too fast. Let's slow them down."
-    : "Às vezes os pensamentos aceleram demais. Vamos desacelerar.",
+    ? "Let's slow those thoughts down a bit."
+    : "Vamos desacelerar esses pensamentos.",
   [
-    {label: T[lang].continue, action: breathing},
-    {label: T[lang].game, action: game}
+    {label:T[lang].continue, action: breathing},
+    {label:T[lang].game, action: game}
   ]);
 }
 
 function anxiousBody(){
   show(lang==="EN"
-    ? "Your body is reacting. Let's help it relax."
-    : "Seu corpo está reagindo. Vamos ajudar ele a relaxar.",
+    ? "Your body is reacting. Let's relax it."
+    : "Seu corpo está reagindo. Vamos relaxar.",
   [
-    {label: T[lang].continue, action: breathing},
-    {label: T[lang].game, action: game}
+    {label:T[lang].continue, action: breathing},
+    {label:T[lang].game, action: game}
   ]);
 }
 
@@ -298,7 +312,7 @@ function sadFlow(){
 
   show(lang==="EN"
     ? "Has this been going on for a while?"
-    : "Isso já vem acontecendo há algum tempo?",
+    : "Isso já vem acontecendo há um tempo?",
   [
     {label:"Yes", action: sadDeep},
     {label:"No", action: reflect}
@@ -307,11 +321,11 @@ function sadFlow(){
 
 function sadDeep(){
   show(lang==="EN"
-    ? "That can feel heavy... you're not alone."
-    : "Isso pode ser pesado... você não está sozinho nisso.",
+    ? "That sounds heavy... you're not alone."
+    : "Isso parece pesado... você não está sozinho.",
   [
-    {label: T[lang].game, action: game},
-    {label: T[lang].continue, action: reflect}
+    {label:T[lang].game, action: game},
+    {label:T[lang].continue, action: reflect}
   ]);
 }
 
@@ -321,8 +335,8 @@ function stressFlow(){
   setBackground("stressed");
 
   show(lang==="EN"
-    ? "What feels like the biggest pressure right now?"
-    : "O que está te pressionando mais agora?",
+    ? "What's been stressing you the most?"
+    : "O que mais está te estressando?",
   [
     {label:"Too many things", action: reflect},
     {label:"People", action: reflect}
@@ -332,11 +346,11 @@ function stressFlow(){
 /* 🤍 NOT SURE */
 function notSureFlow(){
   show(lang==="EN"
-    ? "That's completely okay. We can figure it out slowly."
-    : "Tudo bem não saber. Vamos entender isso com calma.",
+    ? "That's okay. We can figure it out together."
+    : "Tudo bem não saber. Vamos entender juntos.",
   [
-    {label: T[lang].game, action: game},
-    {label: T[lang].continue, action: reflect}
+    {label:T[lang].game, action: game},
+    {label:T[lang].continue, action: reflect}
   ]);
 }
 
@@ -346,26 +360,26 @@ function breathing(){
     ? "Breathe in... hold... and out slowly."
     : "Inspire... segure... e solte devagar.",
   [
-    {label: T[lang].continue, action: reflect}
+    {label:T[lang].continue, action: reflect}
   ]);
 }
 
-/* 💭 REFLECTION */
+/* 💭 REFLECT */
 function reflect(){
   show(lang==="EN"
-    ? "You're doing your best, and that already matters."
-    : "Você está fazendo o seu melhor, e isso já importa muito.",
+    ? "You're doing better than you think."
+    : "Você está indo melhor do que imagina.",
   [
-    {label: T[lang].game, action: game},
-    {label: T[lang].continue, action: end}
+    {label:T[lang].game, action: game},
+    {label:T[lang].continue, action: end}
   ]);
 }
 
 /* 🎮 GAME */
 function game(){
   show(lang==="EN"
-    ? "Look around and find something BLUE 👀"
-    : "Olhe ao redor e encontre algo AZUL 👀",
+    ? "Find something BLUE 👀"
+    : "Encontre algo AZUL 👀",
   [
     {label:"Found", action: step2}
   ]);
@@ -382,8 +396,8 @@ function step2(){
 
 function step3(){
   show(lang==="EN"
-    ? "And finally something RED ❤️"
-    : "E por último algo VERMELHO ❤️",
+    ? "Now something RED ❤️"
+    : "Agora algo VERMELHO ❤️",
   [
     {label:"Done", action:end}
   ]);
