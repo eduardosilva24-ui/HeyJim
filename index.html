@@ -139,7 +139,7 @@
     color: white;
     font-weight: 600;
     font-size: 20px;
-    transition: all 4s linear;
+    transition: all 0s ease;
     box-shadow: 0 0 40px rgba(142,202,230,0.4);
   }
   .breath-circle.expand { transform: scale(1.6); background: var(--mint); }
@@ -193,14 +193,17 @@
   @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
 .small-victory-input{width:100%;padding:14px;border-radius:14px;border:1px solid rgba(0,0,0,0.06);margin-top:12px;background:rgba(255,255,255,0.92);font-family:inherit;box-shadow:0 8px 20px rgba(0,0,0,0.04)}
 
-/* Respiração: animação suave do círculo (4s in, 4s hold, 4s out) */
-@keyframes breathCycle {
-  0%{transform:scale(1);background:var(--coral)}
-  33%{transform:scale(1.6);background:var(--mint)}
-  66%{transform:scale(1.6);background:var(--mint)}
-  100%{transform:scale(1);background:var(--coral)}
+/* Respiração: animação suave do círculo (12s por ciclo completo) */
+@keyframes breathExpand {
+  0% { transform: scale(1); background: var(--coral); }
+  25% { transform: scale(1.6); background: var(--mint); }
+  50% { transform: scale(1.6); background: var(--mint); }
+  75% { transform: scale(1.6); background: var(--mint); }
+  100% { transform: scale(1); background: var(--coral); }
 }
-.breath-circle.animate{animation:breathCycle 12s linear infinite}
+.breath-circle.animating {
+  animation: breathExpand 16s linear infinite;
+}
 
 .breath-circle-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center}
 
@@ -264,8 +267,24 @@ const state = {
   music: false,
   groundingIndex: 0,
   journalContent: "",
-  timeStart: null
+  timeStart: null,
+  breathingActive: false
 };
+
+// Palavras-chave que indicam conteúdo prejudicial
+const HARMFUL_KEYWORDS = [
+  'suicidio', 'suicida', 'morrer', 'morte', 'matar', 'matá',
+  'machucar', 'corte', 'lâmina', 'veneno', 'pílula', 'pílulas',
+  'corda', 'enforcado', 'ahang', 'penhasco', 'carro', 'carro',
+  'violar', 'estupro', 'violência', 'violento', 'agredir', 'espancado',
+  'odeio', 'ódio', 'ninguém me ama', 'sem valor', 'inútil', 'fracasso',
+  'nada importa', 'não vale a pena'
+];
+
+function containsHarmfulContent(text) {
+  const lower = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return HARMFUL_KEYWORDS.some(keyword => lower.includes(keyword));
+}
 
 // Dados de Localização e Conteúdo
 const CONTENT = {
@@ -423,7 +442,6 @@ function renderMoodMeter(){
       </div>
       <div style="height:10px"></div>
       <div style="display:flex; gap:10px; justify-content:center;">
-        <button class="btn btn-ghost" onclick="showEmotionGrid()">${T.pt.moodMeter.skip}</button>
         <button class="btn btn-primary" onclick="handleMoodConfirm()">${T.pt.moodMeter.confirm}</button>
       </div>
     </div>
@@ -485,16 +503,165 @@ async function startMainFlowContinue() {
 async function handleEmotionSelection(id) {
   state.emotion = id;
   
-  if(id === 'anxious' || id === 'stressed') {
-    await speak("Quando a mente corre, o corpo sofre. Vamos começar com a Respiração Quadrada.");
-    renderBreathingExercise();
+  if(id === 'anxious') {
+    await speak("A ansiedade é seu corpo em alerta. Vamos acalmá-lo com atividades comprovadas.");
+    renderActivitySelection('anxious');
   } else if(id === 'sad') {
-    await speak("Às vezes as palavras ajudam a esvaziar o que está cheio demais.");
-    renderSmallVictories();
+    await speak("Sua tristeza é válida. Você está passando por um momento difícil, e tudo bem sentir isso.");
+    await new Promise(r => setTimeout(r, 3000));
+    renderMotivationalMessage("triste");
+  } else if(id === 'stressed') {
+    await speak("Estresse é seu corpo pedindo descanso. Vamos aliviar essa pressão.");
+    renderActivitySelection('stressed');
   } else if(id === 'overwhelmed') {
-    await speak("Às vezes as palavras ajudam a esvaziar o que está cheio demais.");
-    renderJournaling();
+    await speak("Sentir-se sobrecarregado é sinal de que você se importa. Vamos aliviar isso juntos.");
+    await new Promise(r => setTimeout(r, 3000));
+    renderMotivationalMessage("sobrecarregado");
   }
+}
+
+function renderActivitySelection(emotion) {
+  const activities = {
+    anxious: [
+      { icon: "🫁", name: "Respiração Quadrada", desc: "4 passos: inspira, segura, expira, pausa", action: "startBreathingSquare" },
+      { icon: "👁️", name: "Grounding 5 Sentidos", desc: "Conecte-se ao momento presente", action: "startGroundingFiveSenses" },
+      { icon: "🧠", name: "Pensamentos Acelerados", desc: "Organize seus pensamentos", action: "startRapidThoughts" }
+    ],
+    stressed: [
+      { icon: "🫁", name: "Respiração 4-7-8", desc: "Técnica de relaxamento profundo", action: "startBreathing478" },
+      { icon: "💪", name: "Solte a Tensão", desc: "Relaxamento muscular progressivo", action: "startTensionRelease" },
+      { icon: "📋", name: "Preocupações Organizadas", desc: "Ordene seus medos e preocupações", action: "startOrganizedWorries" }
+    ]
+  };
+
+  const actList = activities[emotion];
+  const body = document.getElementById('chat-body');
+  body.innerHTML = `<h2 style="font-size:20px; margin-bottom:20px;">Escolha uma atividade</h2>`;
+
+  const container = document.createElement('div');
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.gap = '12px';
+
+  actList.forEach(act => {
+    const card = document.createElement('div');
+    card.style.background = 'white';
+    card.style.padding = '16px';
+    card.style.borderRadius = '16px';
+    card.style.cursor = 'pointer';
+    card.style.border = '2px solid transparent';
+    card.style.transition = 'all 0.3s ease';
+    card.onclick = () => {
+      card.style.borderColor = 'var(--gold)';
+      card.style.transform = 'scale(0.98)';
+      setTimeout(() => window[act.action](), 300);
+    };
+    card.onmouseover = () => {
+      card.style.borderColor = 'var(--gold)';
+      card.style.transform = 'translateY(-3px)';
+    };
+    card.onmouseout = () => {
+      card.style.borderColor = 'transparent';
+      card.style.transform = 'translateY(0)';
+    };
+    card.innerHTML = `
+      <div style="font-size:28px; margin-bottom:8px;">${act.icon}</div>
+      <p style="font-weight:600; color:var(--text); margin-bottom:4px;">${act.name}</p>
+      <p style="font-size:13px; color:var(--text-soft);">${act.desc}</p>
+    `;
+    container.appendChild(card);
+  });
+
+  body.appendChild(container);
+}
+
+async function renderMotivationalMessage(type) {
+  const body = document.getElementById('chat-body');
+  
+  const message = type === 'triste' 
+    ? "Você é uma pessoa incrível, mesmo em dias difíceis. Sua existência importa. Você merece amor, compaixão e cuidado — começando por você mesmo. Respire, porque dias melhores vêm."
+    : "Você não está sozinho(a) nisto. A sobrecarga que sente mostra sua sensibilidade e dedicação. Você é forte o suficiente para passar por isto. Você é incrível e merece descanso.";
+  
+  body.innerHTML = `
+    <div style="padding:20px; text-align:center;">
+      <div class="jim-icon" style="font-size:60px; margin-bottom:15px;">💚</div>
+      <h2>Uma Cartinha Para Você</h2>
+      <p class="prose" style="margin-top:20px; font-size:16px; line-height:1.8; color: var(--text);">
+        ${message}
+      </p>
+      <div style="height:20px"></div>
+      <button class="btn btn-primary" onclick="continueAfterMessage()">${type === 'triste' ? 'Vou escrever minhas vitórias' : 'Vou esvaziar meu coração'}</button>
+    </div>
+  `;
+}
+
+function continueAfterMessage() {
+  if(state.emotion === 'sad') {
+    renderSadActivitySelection();
+  } else if(state.emotion === 'overwhelmed') {
+    renderOverwhelmedActivitySelection();
+  }
+}
+
+function renderSadActivitySelection() {
+  const activities = [
+    { icon: "🏆", name: "Pequenas Vitórias", desc: "Celebre 3 coisas boas que viveu", action: "renderSmallVictories" },
+    { icon: "💌", name: "Carta de Auto-compaixão", desc: "Escreva para si mesmo com amor", action: "renderCompassionLetter" },
+    { icon: "✨", name: "Visualização de Esperança", desc: "Imagine seu futuro melhor", action: "renderHopeVisualization" }
+  ];
+
+  renderActivitySelectionUI(activities);
+}
+
+function renderOverwhelmedActivitySelection() {
+  const activities = [
+    { icon: "📝", name: "Diário Reflexivo", desc: "Escreva para esvaziar seu coração", action: "renderJournaling" },
+    { icon: "🎯", name: "Priorização", desc: "Identifique o que realmente importa", action: "renderPrioritization" },
+    { icon: "🧘", name: "Respiração Mindfulness", desc: "1 minuto de respiração consciente", action: "renderMindfulnessBreathing" }
+  ];
+
+  renderActivitySelectionUI(activities);
+}
+
+function renderActivitySelectionUI(activities) {
+  const body = document.getElementById('chat-body');
+  body.innerHTML = `<h2 style="font-size:20px; margin-bottom:20px;">Escolha uma atividade</h2>`;
+
+  const container = document.createElement('div');
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.gap = '12px';
+
+  activities.forEach(act => {
+    const card = document.createElement('div');
+    card.style.background = 'white';
+    card.style.padding = '16px';
+    card.style.borderRadius = '16px';
+    card.style.cursor = 'pointer';
+    card.style.border = '2px solid transparent';
+    card.style.transition = 'all 0.3s ease';
+    card.onclick = () => {
+      card.style.borderColor = 'var(--gold)';
+      card.style.transform = 'scale(0.98)';
+      setTimeout(() => window[act.action](), 300);
+    };
+    card.onmouseover = () => {
+      card.style.borderColor = 'var(--gold)';
+      card.style.transform = 'translateY(-3px)';
+    };
+    card.onmouseout = () => {
+      card.style.borderColor = 'transparent';
+      card.style.transform = 'translateY(0)';
+    };
+    card.innerHTML = `
+      <div style="font-size:28px; margin-bottom:8px;">${act.icon}</div>
+      <p style="font-weight:600; color:var(--text); margin-bottom:4px;">${act.name}</p>
+      <p style="font-size:13px; color:var(--text-soft);">${act.desc}</p>
+    `;
+    container.appendChild(card);
+  });
+
+  body.appendChild(container);
 }
 
 /* --- MÓDULO: RESPIRAÇÃO QUADRADA (2 minutos de duração simulada) --- */
@@ -517,27 +684,44 @@ function renderBreathingExercise() {
   // mínimo de ciclos: 2 para estados sobrecarregados/estressados, 4 caso contrário
   const minCycles = (state.emotion === 'stressed' || state.emotion === 'overwhelmed') ? 2 : 4;
   let finishBtnAdded = false;
+  let animationTimeout = null;
+  state.breathingActive = true;
   
   const runCycle = () => {
+    if (!state.breathingActive) return;
+    
     // Inspirar (4s)
     instr.innerText = T.pt.breath.inhale;
-    circle.className = "breath-circle expand animate";
+    circle.className = "breath-circle";
+    circle.style.transition = "all 4s ease-in";
+    circle.style.transform = "scale(1.6)";
+    circle.style.background = "var(--mint)";
     circle.innerText = "Inspirar";
     
-    setTimeout(() => {
+    animationTimeout = setTimeout(() => {
+      if (!state.breathingActive) return;
+      
       // Segurar (4s)
       instr.innerText = T.pt.breath.hold;
+      circle.style.transition = "none";
       circle.innerText = "Segurar";
       
-      setTimeout(() => {
+      animationTimeout = setTimeout(() => {
+        if (!state.breathingActive) return;
+        
         // Expirar (4s)
         instr.innerText = T.pt.breath.exhale;
-        circle.className = "breath-circle contract animate";
+        circle.style.transition = "all 4s ease-out";
+        circle.style.transform = "scale(1)";
+        circle.style.background = "var(--coral)";
         circle.innerText = "Expirar";
         
-        setTimeout(() => {
+        animationTimeout = setTimeout(() => {
+          if (!state.breathingActive) return;
+          
           // Pausa (4s)
           instr.innerText = T.pt.breath.pause;
+          circle.style.transition = "none";
           circle.innerText = "Pausa";
           cycles++;
 
@@ -547,13 +731,17 @@ function renderBreathingExercise() {
             btn.style.width = '60%';
             btn.style.marginTop = '14px';
             btn.innerText = T.pt.breathingFinish;
-            btn.onclick = () => startGrounding();
+            btn.onclick = () => {
+              state.breathingActive = false;
+              if(animationTimeout) clearTimeout(animationTimeout);
+              startGrounding();
+            };
             controls.appendChild(btn);
             finishBtnAdded = true;
-            return; // espera que o usuário clique
+            return;
           }
 
-          setTimeout(runCycle, 4000);
+          animationTimeout = setTimeout(runCycle, 4000);
         }, 4000);
       }, 4000);
     }, 4000);
@@ -598,6 +786,7 @@ function nextGroundingStep() {
 async function renderJournaling() {
   await speak("Para finalizar, escreva uma coisa que te deixou grato hoje, por menor que seja.");
   const body = document.getElementById('chat-body');
+  body.innerHTML = '';
   
   const area = document.createElement('textarea');
   area.className = "journal-box";
@@ -605,11 +794,39 @@ async function renderJournaling() {
   area.placeholder = "Hoje eu me senti grato por...";
   body.appendChild(area);
   
+  const errorMsg = document.createElement('p');
+  errorMsg.id = 'journalError';
+  errorMsg.style.color = 'var(--coral)';
+  errorMsg.style.fontSize = '14px';
+  errorMsg.style.textAlign = 'center';
+  errorMsg.style.marginTop = '10px';
+  errorMsg.style.display = 'none';
+  body.appendChild(errorMsg);
+  
   const btn = document.createElement('button');
   btn.className = "btn btn-primary";
   btn.innerText = "Terminei de escrever";
-  btn.onclick = finishSession;
+  btn.onclick = () => validateAndFinish();
   body.appendChild(btn);
+}
+
+function validateAndFinish() {
+  const content = document.getElementById('userJournal').value.trim();
+  const errorMsg = document.getElementById('journalError');
+  
+  if(!content) {
+    errorMsg.innerText = "Por favor, escreva algo antes de continuar. Sua voz importa! 💬";
+    errorMsg.style.display = 'block';
+    return;
+  }
+  
+  if(containsHarmfulContent(content)) {
+    errorMsg.innerText = "Percebo que você está sofrendo. Seus sentimentos são válidos, mas estou aqui para apoiar, não para piorar. Se precise de ajuda profissional urgente, ligue 188 (CVV). 💚";
+    errorMsg.style.display = 'block';
+    return;
+  }
+  
+  finishSession();
 }
 
 // Pequenas Vitórias — atividade interativa para emoções de tristeza
@@ -628,11 +845,34 @@ async function renderSmallVictories() {
     body.appendChild(input);
   }
 
+  // Campo de suporte emocional
+  const supportMsg = document.createElement('div');
+  supportMsg.style.marginTop = '20px';
+  supportMsg.style.padding = '16px';
+  supportMsg.style.background = 'linear-gradient(135deg, rgba(168,218,188,0.2), rgba(255,232,216,0.2))';
+  supportMsg.style.borderRadius = '16px';
+  supportMsg.style.borderLeft = '4px solid var(--mint)';
+  supportMsg.innerHTML = `
+    <p class="prose" style="font-weight: 600; color: var(--text); margin-bottom: 8px;">💚 Uma Mensagem Para Você</p>
+    <p class="prose" style="font-size: 14px; color: var(--text-soft);">Você é uma pessoa incrível e merece tudo de bom. Seus pequenos passos hoje importam. Você é forte, você é valioso, você é amado.</p>
+  `;
+  body.appendChild(supportMsg);
+
   // Campo oculto para manter compatibilidade com finishSession
   const hidden = document.createElement('textarea');
   hidden.id = 'userJournal';
   hidden.style.display = 'none';
   body.appendChild(hidden);
+
+  // Mensagem de erro
+  const errorMsg = document.createElement('p');
+  errorMsg.id = 'smallVictoriesError';
+  errorMsg.style.color = 'var(--coral)';
+  errorMsg.style.fontSize = '14px';
+  errorMsg.style.textAlign = 'center';
+  errorMsg.style.marginTop = '10px';
+  errorMsg.style.display = 'none';
+  body.appendChild(errorMsg);
 
   const btn = document.createElement('button');
   btn.className = 'btn btn-primary';
@@ -643,14 +883,379 @@ async function renderSmallVictories() {
 
 function finishSmallVictories(){
   const parts = [];
+  let anyFilled = false;
+  
   for(let i=1;i<=3;i++){
     const v = document.getElementById(`sv${i}`).value || '';
-    if(v.trim()) parts.push(v.trim());
+    if(v.trim()) {
+      anyFilled = true;
+      if(containsHarmfulContent(v)) {
+        const errorMsg = document.getElementById('smallVictoriesError');
+        errorMsg.innerText = "Percebi algo preocupante. Se você está sofrendo, saiba que não está sozinho. Ligue 188 (CVV) para conversar. 💚";
+        errorMsg.style.display = 'block';
+        return;
+      }
+      parts.push(v.trim());
+    }
   }
+  
+  if(!anyFilled) {
+    const errorMsg = document.getElementById('smallVictoriesError');
+    errorMsg.innerText = "Por favor, escreva pelo menos uma coisa boa que você viveu! 💬";
+    errorMsg.style.display = 'block';
+    return;
+  }
+  
   const combined = parts.join(' \n ');
   const hidden = document.getElementById('userJournal');
   if(hidden) hidden.value = combined;
   finishSession();
+}
+
+/* --- ATIVIDADES PARA ANSIOSO --- */
+
+function startBreathingSquare() {
+  renderBreathingExercise();
+}
+
+async function startGroundingFiveSenses() {
+  await speak("Vamos conectar você aos seus 5 sentidos. Isso traz você para o presente.");
+  renderFiveSenses();
+}
+
+function renderFiveSenses() {
+  const body = document.getElementById('chat-body');
+  
+  const senses = [
+    { count: 5, sense: "coisas que você **vê**", emoji: "👀" },
+    { count: 4, sense: "coisas que você **sente** no corpo", emoji: "🤚" },
+    { count: 3, sense: "coisas que você **ouve**", emoji: "👂" },
+    { count: 2, sense: "coisas que você **prova**", emoji: "👅" },
+    { count: 1, sense: "coisas que você **cheira**", emoji: "👃" }
+  ];
+
+  let currentStep = 0;
+
+  const displayStep = () => {
+    if(currentStep >= senses.length) {
+      document.getElementById('userJournal').value = 'Completei o grounding dos 5 sentidos';
+      finishSession();
+      return;
+    }
+    const s = senses[currentStep];
+    const stepNum = currentStep;
+    body.innerHTML = `
+      <p class="prose" style="font-size:20px; margin-bottom:20px;">${s.emoji}</p>
+      <h2 style="font-size:20px;">Encontre ${s.count} coisas que você ${s.sense}</h2>
+      <p class="prose" style="margin-top:16px; margin-bottom:20px;">Pense em coisas ao seu redor agora</p>
+      <input type="text" id="sense-input" class="journal-box" style="height:80px;" placeholder="Descreva aqui..." />
+      <button class="btn btn-primary" onclick="nextSenseStep(${stepNum})">Próximo ${stepNum + 1}/${senses.length}</button>
+    `;
+  };
+
+  window.nextSenseStep = (step) => {
+    currentStep = step + 1;
+    displayStep();
+  };
+
+  displayStep();
+}
+
+async function startRapidThoughts() {
+  await speak("Seus pensamentos estão acelerados. Vamos colocá-los no papel para organizar.");
+  renderRapidThoughts();
+}
+
+function renderRapidThoughts() {
+  const body = document.getElementById('chat-body');
+  body.innerHTML = `
+    <h2>Pensamentos Acelerados</h2>
+    <p class="prose" style="margin-top:10px;">Escreva todos os pensamentos que passam por sua cabeça agora. Sem filtro, sem julgamento.</p>
+    <textarea id="rapidThoughts" class="journal-box" placeholder="Solte seus pensamentos aqui..."></textarea>
+    <p style="font-size:12px; color:var(--text-soft); margin-top:10px;">✨ Organizar o caos mental traz clareza</p>
+    <button class="btn btn-primary" onclick="finishRapidThoughts()">Processado ✓</button>
+  `;
+}
+
+function finishRapidThoughts() {
+  const content = document.getElementById('rapidThoughts').value.trim();
+  if(!content) {
+    alert('Escreva seus pensamentos para continuar!');
+    return;
+  }
+  document.getElementById('userJournal').value = content;
+  finishSession();
+}
+
+/* --- ATIVIDADES PARA ESTRESSADO --- */
+
+async function startBreathing478() {
+  await speak("A respiração 4-7-8 é uma técnica ancestral de relaxamento profundo.");
+  renderBreathing478();
+}
+
+function renderBreathing478() {
+  const body = document.getElementById('chat-body');
+  body.innerHTML = `
+    <p class="prose" id="breath-478-instr">Prepare-se...</p>
+    <div class="breath-circle-wrap">
+      <div class="breath-circle" id="b-478-circle" style="font-size:24px;">Pronto</div>
+      <div id="breath-478-controls" style="margin-top:14px;width:100%;display:flex;justify-content:center"></div>
+    </div>
+  `;
+  
+  let cycles = 0;
+  const circle = document.getElementById('b-478-circle');
+  const instr = document.getElementById('breath-478-instr');
+  const controls = document.getElementById('breath-478-controls');
+  const minCycles = 3;
+  let finishBtnAdded = false;
+  let animationTimeout = null;
+  
+  const runCycle = () => {
+    // 4s inspirar
+    instr.innerText = "Inspire por 4 segundos";
+    circle.style.transition = "all 4s ease-in";
+    circle.style.transform = "scale(1.5)";
+    circle.style.background = "var(--mint)";
+    circle.innerText = "4";
+    
+    animationTimeout = setTimeout(() => {
+      // 7s segurar
+      instr.innerText = "Segure por 7 segundos";
+      circle.style.transition = "none";
+      circle.style.background = "var(--sky-deep)";
+      circle.innerText = "7";
+      
+      animationTimeout = setTimeout(() => {
+        // 8s expirar
+        instr.innerText = "Expire por 8 segundos";
+        circle.style.transition = "all 8s ease-out";
+        circle.style.transform = "scale(1)";
+        circle.style.background = "var(--coral)";
+        circle.innerText = "8";
+        
+        animationTimeout = setTimeout(() => {
+          cycles++;
+          if(cycles >= minCycles && !finishBtnAdded) {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-primary';
+            btn.style.width = '60%';
+            btn.innerText = 'Terminei - Estou mais calmo';
+            btn.onclick = () => {
+              finishSession();
+            };
+            controls.appendChild(btn);
+            finishBtnAdded = true;
+            return;
+          }
+          animationTimeout = setTimeout(runCycle, 2000);
+        }, 8000);
+      }, 7000);
+    }, 4000);
+  };
+  
+  setTimeout(runCycle, 1500);
+}
+
+async function startTensionRelease() {
+  await speak("Vamos liberar a tensão do seu corpo progressivamente.");
+  renderTensionRelease();
+}
+
+function renderTensionRelease() {
+  const body = document.getElementById('chat-body');
+  
+  const muscles = [
+    { name: "Rosto", desc: "Contraia todos os músculos do rosto por 5s, depois solte" },
+    { name: "Ombros", desc: "Levante os ombros em direção às orelhas, segure, solte" },
+    { name: "Braços", desc: "Aperte os punhos e contraia os braços, depois relaxe" },
+    { name: "Peito", desc: "Inspire fundo contraindo o peito, depois expire" },
+    { name: "Barriga", desc: "Contraia o abdômen, conte até 5, solte" },
+    { name: "Pernas", desc: "Contraia as coxas e panturrilhas, depois relaxe completamente" }
+  ];
+
+  let current = 0;
+
+  const showMuscle = () => {
+    if(current >= muscles.length) {
+      finishSession();
+      return;
+    }
+
+    const m = muscles[current];
+    body.innerHTML = `
+      <h2 style="font-size:24px; margin-bottom:20px;">💪 ${m.name}</h2>
+      <p class="prose" style="margin-bottom:20px;">${m.desc}</p>
+      <p style="font-size:13px; color:var(--text-soft); margin-bottom:20px;">Respirar, fazer, soltar. ${current + 1}/${muscles.length}</p>
+      <button class="btn btn-primary" onclick="nextMuscle()">Feito! Próximo</button>
+    `;
+  };
+
+  window.nextMuscle = () => {
+    current++;
+    showMuscle();
+  };
+
+  showMuscle();
+}
+
+async function startOrganizedWorries() {
+  await speak("Vamos transformar suas preocupações em um plano organizável.");
+  renderOrganizedWorries();
+}
+
+function renderOrganizedWorries() {
+  const body = document.getElementById('chat-body');
+  body.innerHTML = `
+    <h2>Preocupações Organizadas</h2>
+    <p class="prose" style="margin-top:10px;">Escreva suas 3 principais preocupações do momento:</p>
+    <div style="margin-top:15px;">
+      <input type="text" id="worry1" class="small-victory-input" placeholder="Preocupação #1" />
+      <input type="text" id="worry2" class="small-victory-input" placeholder="Preocupação #2" />
+      <input type="text" id="worry3" class="small-victory-input" placeholder="Preocupação #3" />
+    </div>
+    <div style="margin-top:20px; padding:14px; background:rgba(255,232,216,0.3); border-radius:12px; border-left:4px solid var(--gold);">
+      <p class="prose" style="font-size:13px;">✨ Nomear os medos reduz seu poder sobre você.</p>
+    </div>
+    <button class="btn btn-primary" style="margin-top:15px;" onclick="finalizeWorries()">Entendi meus medos</button>
+  `;
+}
+
+function finalizeWorries() {
+  const w1 = document.getElementById('worry1').value.trim();
+  const w2 = document.getElementById('worry2').value.trim();
+  const w3 = document.getElementById('worry3').value.trim();
+
+  if(!w1) {
+    alert('Escreva pelo menos uma preocupação!');
+    return;
+  }
+
+  const combined = [w1, w2, w3].filter(w => w).join('; ');
+  document.getElementById('userJournal').value = combined;
+  finishSession();
+}
+
+/* --- ATIVIDADES PARA TRISTE (após cartinha) --- */
+
+async function renderCompassionLetter() {
+  const body = document.getElementById('chat-body');
+  body.innerHTML = `
+    <h2>Carta de Auto-compaixão</h2>
+    <p class="prose" style="margin-top:15px; margin-bottom:20px;">Escreva uma carta para si mesmo como se fosse para um amigo que está sofrendo:</p>
+    <textarea id="compassionLetter" class="journal-box" placeholder="Querido(a) eu..."></textarea>
+    <button class="btn btn-primary" onclick="finishCompassionLetter()">Enviei meu amor</button>
+  `;
+}
+
+function finishCompassionLetter() {
+  const content = document.getElementById('compassionLetter').value.trim();
+  if(!content) {
+    alert('Escreva sua carta de auto-compaixão!');
+    return;
+  }
+  if(containsHarmfulContent(content)) {
+    alert('Seus sentimentos importam. Se está em crise, ligue 188 (CVV). 💚');
+    return;
+  }
+  document.getElementById('userJournal').value = content;
+  finishSession();
+}
+
+async function renderHopeVisualization() {
+  const body = document.getElementById('chat-body');
+  body.innerHTML = `
+    <h2>Visualização de Esperança</h2>
+    <p class="prose" style="margin-top:15px;">Feche os olhos e imagine um momento futuro onde você se sente melhor. Descreva:</p>
+    <textarea id="hopeViz" class="journal-box" placeholder="Eu imagino que..."></textarea>
+    <p style="font-size:12px; color:var(--text-soft); margin-top:10px;">Seus sonhos importam e merecem existir 💫</p>
+    <button class="btn btn-primary" onclick="finishHopeViz()">Sinto essa esperança</button>
+  `;
+}
+
+function finishHopeViz() {
+  const content = document.getElementById('hopeViz').value.trim();
+  if(!content) {
+    alert('Compartilhe sua esperança!');
+    return;
+  }
+  document.getElementById('userJournal').value = content;
+  finishSession();
+}
+
+/* --- ATIVIDADES PARA SOBRECARREGADO (após cartinha) --- */
+
+async function renderPrioritization() {
+  const body = document.getElementById('chat-body');
+  body.innerHTML = `
+    <h2>Priorização</h2>
+    <p class="prose" style="margin-top:15px;">Qual é a ÚNICA coisa mais urgente agora? Escreva:</p>
+    <input type="text" id="urgent" class="small-victory-input" placeholder="A coisa mais urgente é..." />
+    <p class="prose" style="margin-top:15px; font-size:14px;">Agora, o que pode esperar? (3 coisas)</p>
+    <input type="text" id="wait1" class="small-victory-input" placeholder="Pode esperar #1" />
+    <input type="text" id="wait2" class="small-victory-input" placeholder="Pode esperar #2" />
+    <input type="text" id="wait3" class="small-victory-input" placeholder="Pode esperar #3" />
+    <div style="margin-top:15px; padding:12px; background:rgba(168,218,188,0.2); border-radius:12px;">
+      <p class="prose" style="font-size:12px;">Focus em UMA coisa tira o peso do mundo inteiro dos seus ombros.</p>
+    </div>
+    <button class="btn btn-primary" style="margin-top:15px;" onclick="finishPrioritization()">Agora vejo claro</button>
+  `;
+}
+
+function finishPrioritization() {
+  const urgent = document.getElementById('urgent').value.trim();
+  if(!urgent) {
+    alert('Qual é sua prioridade máxima agora?');
+    return;
+  }
+  const w1 = document.getElementById('wait1').value.trim();
+  const w2 = document.getElementById('wait2').value.trim();
+  const w3 = document.getElementById('wait3').value.trim();
+  
+  const combined = `URGENTE: ${urgent}\n\nPODE ESPERAR: ${[w1,w2,w3].filter(w=>w).join(', ')}`;
+  document.getElementById('userJournal').value = combined;
+  finishSession();
+}
+
+async function renderMindfulnessBreathing() {
+  const body = document.getElementById('chat-body');
+  body.innerHTML = `
+    <p class="prose" id="mindful-instr">Respire naturalmente... observe seu próprio ritmo</p>
+    <div class="breath-circle-wrap">
+      <div class="breath-circle" id="mindful-circle" style="font-size:18px; background:var(--mint);">Respire</div>
+      <div id="mindful-controls" style="margin-top:14px;width:100%;display:flex;justify-content:center"></div>
+    </div>
+  `;
+  
+  let elapsed = 0;
+  const maxTime = 60;
+  const circle = document.getElementById('mindful-circle');
+  const instr = document.getElementById('mindful-instr');
+  const controls = document.getElementById('mindful-controls');
+  let timer = null;
+  
+  const updateTime = () => {
+    elapsed++;
+    const remaining = maxTime - elapsed;
+    circle.innerText = remaining + 's';
+    
+    if(elapsed >= maxTime) {
+      clearInterval(timer);
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-primary';
+      btn.style.width = '60%';
+      btn.innerText = 'Sinto a calma agora';
+      btn.onclick = () => {
+        document.getElementById('userJournal').value = 'Completei 1 minuto de respiração consciente';
+        finishSession();
+      };
+      controls.appendChild(btn);
+      instr.innerText = "Você completou 1 minuto de respiração consciente 🧘";
+    }
+  };
+  
+  timer = setInterval(updateTime, 1000);
 }
 
 /* --- FINALIZAÇÃO --- */
@@ -682,4 +1287,5 @@ document.getElementById('userName').addEventListener('keypress', e => { if(e.key
 
 </script>
 </body>
+
 </html>
