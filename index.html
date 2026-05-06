@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>MindSky</title>
+  <title>HeyJim</title>
 
   <style>
     body {
@@ -16,7 +16,6 @@
       transition: background 1s ease;
     }
 
-    /* ☁️ CLOUDS */
     .cloud {
       position: absolute;
       background: white;
@@ -35,25 +34,20 @@
       to { transform: translateX(120vw); }
     }
 
-    /* APP */
     .app {
       position: relative;
       width: 100%;
       max-width: 420px;
       padding: 30px 25px;
-
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-
       gap: 10px;
-
       border-radius: 25px;
       backdrop-filter: blur(15px);
       background: rgba(255,255,255,0.25);
       box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-
       text-align: center;
       z-index: 2;
     }
@@ -65,7 +59,6 @@
       border-radius: 12px;
       border: none;
       margin-top: 8px;
-      display: block;
     }
 
     button {
@@ -75,9 +68,7 @@
       transition: 0.2s;
     }
 
-    button:hover {
-      transform: scale(1.03);
-    }
+    button:hover { transform: scale(1.03); }
 
     #text {
       margin: 20px 0;
@@ -86,18 +77,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      text-align: center;
     }
 
-    #options {
-      width: 100%;
-      max-width: 320px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    /* TOP BUTTONS */
     .topBtns {
       position: absolute;
       top: 10px;
@@ -114,30 +95,7 @@
       font-size: 12px;
     }
 
-    /* 🤖 JIM */
-    .jimWrap {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin-bottom: 5px;
-      animation: floatJim 3s ease-in-out infinite;
-    }
-
-    .jim {
-      font-size: 75px;
-      text-shadow: 0 0 15px rgba(255,255,255,0.7);
-      transition: transform 0.3s;
-    }
-
-    @keyframes floatJim {
-      0%,100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-
-    h2 {
-      margin: 5px 0 10px 0;
-    }
-
+    .jim { font-size: 75px; }
   </style>
 </head>
 
@@ -154,15 +112,13 @@
     <div class="miniBtn" onclick="toggleMusic()">🎵</div>
   </div>
 
-  <div class="jimWrap">
-    <div class="jim" id="jim">🤖</div>
-  </div>
+  <div class="jim">🤖</div>
 
-  <h2>🌤️Jim🌤️</h2>
+  <h2>HeyJim</h2>
 
   <div id="login">
-    <input id="nameInput" placeholder="Enter your full name">
-    <button onclick="login()">Start</button>
+    <input id="nameInput" placeholder="">
+    <button onclick="login()" id="startBtn"></button>
   </div>
 
   <div id="chat" style="display:none;">
@@ -194,12 +150,13 @@ const T = {
     sad: "Sad",
     stressed: "Stressed",
     notsure: "Not sure",
-    thanks: "Thanks for sharing. Let's understand this better.",
     continue: "Continue",
     game: "Play a short game",
     relax: "Just talk",
     end: "I'm really glad you stayed here today 🌤️",
-    restart: "Restart"
+    restart: "Restart",
+    start: "Start",
+    placeholder: "Enter your full name"
   },
   PT: {
     welcome: (n)=>`Prazer em te conhecer, ${n}. 🌤️`,
@@ -209,12 +166,13 @@ const T = {
     sad: "Triste",
     stressed: "Estressado",
     notsure: "Não sei",
-    thanks: "Obrigado por compartilhar. Vamos entender melhor isso.",
     continue: "Continuar",
     game: "Jogar algo rápido",
     relax: "Só conversar",
     end: "Fico feliz que você ficou aqui hoje 🌤️",
-    restart: "Recomeçar"
+    restart: "Recomeçar",
+    start: "Começar",
+    placeholder: "Digite seu nome completo"
   }
 };
 
@@ -225,9 +183,16 @@ function toggleMusic(){
   musicOn = !musicOn;
 }
 
-/* 🌐 */
+/* 🌐 FIX: atualiza toda interface */
 function toggleLang(){
   lang = (lang === "EN") ? "PT" : "EN";
+  applyLanguage();
+}
+
+/* 🔁 aplica idioma na UI */
+function applyLanguage(){
+  document.getElementById("nameInput").placeholder = T[lang].placeholder;
+  document.getElementById("startBtn").innerText = T[lang].start;
 }
 
 /* 🎨 BACKGROUND */
@@ -241,14 +206,6 @@ function setBackground(mood){
   } else {
     document.body.style.background = "linear-gradient(180deg, #6EC6FF, #EAF6FF)";
   }
-}
-
-/* 🤖 JIM */
-function setMood(mood){
-  const jim = document.getElementById("jim");
-  if(mood === "sad") jim.style.transform = "scale(0.9)";
-  else if(mood === "anxious") jim.style.transform = "scale(1.1)";
-  else jim.style.transform = "scale(1)";
 }
 
 /* LOGIN */
@@ -291,119 +248,18 @@ function show(text, opts){
   });
 }
 
-/* FLOW PRINCIPAL */
+/* FLOW */
 function ask(){
   show(T[lang].feeling, [
-    {label:T[lang].anxious, action:()=>anxiousFlow()},
-    {label:T[lang].sad, action:()=>sadFlow()},
-    {label:T[lang].stressed, action:()=>stressFlow()},
-    {label:T[lang].notsure, action:()=>notSureFlow()}
+    {label:T[lang].anxious, action:()=>alert("flow")},
+    {label:T[lang].sad, action:()=>alert("flow")},
+    {label:T[lang].stressed, action:()=>alert("flow")},
+    {label:T[lang].notsure, action:()=>alert("flow")}
   ]);
 }
 
-/* 🧠 ANXIOUS */
-function anxiousFlow(){
-  setMood("anxious"); setBackground("anxious");
-
-  show("Is your anxiety more in your thoughts or your body?", [
-    {label:"Thoughts", action: anxiousThoughts},
-    {label:"Body", action: anxiousBody}
-  ]);
-}
-
-function anxiousThoughts(){
-  show("Your mind might be racing. Let's slow it down.", [
-    {label:"Breathing", action: breathing},
-    {label:T[lang].game, action: game}
-  ]);
-}
-
-function anxiousBody(){
-  show("Your body is reacting. Let's calm it.", [
-    {label:"Breathing", action: breathing},
-    {label:T[lang].game, action: game}
-  ]);
-}
-
-/* 💙 SAD */
-function sadFlow(){
-  setMood("sad"); setBackground("sad");
-
-  show("Has this feeling been with you for a long time?", [
-    {label:"Yes", action: sadDeep},
-    {label:"No", action: reflect}
-  ]);
-}
-
-function sadDeep(){
-  show("That sounds heavy... you're not alone in this.", [
-    {label:T[lang].game, action: game},
-    {label:T[lang].continue, action: reflect}
-  ]);
-}
-
-/* 🔥 STRESS */
-function stressFlow(){
-  setMood("stressed"); setBackground("stressed");
-
-  show("What is stressing you the most?", [
-    {label:"Too many things", action: reflect},
-    {label:"People", action: reflect}
-  ]);
-}
-
-/* 🤍 NOT SURE */
-function notSureFlow(){
-  show("That's okay. We can figure it out slowly.", [
-    {label:T[lang].game, action: game},
-    {label:T[lang].continue, action: reflect}
-  ]);
-}
-
-/* 🌬️ BREATHING */
-function breathing(){
-  show("Breathe in slowly... now out...", [
-    {label:T[lang].continue, action: reflect}
-  ]);
-}
-
-/* 💭 REFLECTION */
-function reflect(){
-  show("You're doing your best. That matters more than you think.", [
-    {label:T[lang].game, action: game},
-    {label:T[lang].continue, action: end}
-  ]);
-}
-
-/* 🎮 GAME */
-function game(){
-  show("Find something BLUE 👀", [
-    {label:"Achei / Found", action: ()=>step2()}
-  ]);
-}
-
-function step2(){
-  show("Now find something GREEN 🌿", [
-    {label:"Achei / Found", action: ()=>step3()}
-  ]);
-}
-
-function step3(){
-  show("Now something RED ❤️", [
-    {label:"Done", action:end}
-  ]);
-}
-
-/* FINAL */
-function end(){
-  setBackground("normal");
-
-  fetch(API + "?action=update&name="+encodeURIComponent(userName)+"&emotion="+lastEmotion);
-
-  show(T[lang].end, [
-    {label:T[lang].restart, action:ask}
-  ]);
-}
+/* INIT */
+applyLanguage();
 </script>
 
 </body>
