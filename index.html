@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <title>HeyJim</title>
 
   <style>
@@ -10,63 +11,50 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      overflow: hidden;
       font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
       background: linear-gradient(180deg, #6EC6FF, #EAF6FF);
-      transition: background 1s ease;
-    }
-
-    .cloud {
-      position: absolute;
-      background: white;
-      border-radius: 50%;
-      opacity: 0.6;
-      filter: blur(2px);
-      animation: float linear infinite;
-    }
-
-    .c1 { width:120px;height:60px;top:10%;animation-duration:80s;}
-    .c2 { width:180px;height:90px;top:40%;animation-duration:120s;}
-    .c3 { width:140px;height:70px;top:70%;animation-duration:100s;}
-
-    @keyframes float {
-      from { transform: translateX(-200px); }
-      to { transform: translateX(120vw); }
+      transition: 1s ease;
     }
 
     .app {
-      position: relative;
       width: 100%;
-      max-width: 420px;
-      padding: 30px 25px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
+      max-width: 450px;
+      padding: 30px;
       border-radius: 25px;
-      backdrop-filter: blur(15px);
       background: rgba(255,255,255,0.25);
-      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
       text-align: center;
-      z-index: 2;
+    }
+
+    .jim {
+      font-size: 80px;
+      animation: float 3s infinite ease-in-out;
+    }
+
+    @keyframes float {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+      100% { transform: translateY(0); }
     }
 
     input, button {
       width: 100%;
-      max-width: 320px;
       padding: 12px;
+      margin-top: 8px;
       border-radius: 12px;
       border: none;
-      margin-top: 8px;
+      font-size: 14px;
     }
 
     button {
-      background: linear-gradient(45deg,#FFD54F,#FFB300);
+      background: #FFD54F;
       cursor: pointer;
       font-weight: bold;
     }
 
-    .topBtns {
+    .top {
       position: absolute;
       top: 10px;
       right: 10px;
@@ -74,344 +62,310 @@
       gap: 5px;
     }
 
-    .miniBtn {
+    .mini {
       padding: 6px 10px;
-      border-radius: 8px;
       background: rgba(255,255,255,0.6);
+      border-radius: 8px;
       cursor: pointer;
       font-size: 12px;
     }
 
-    .jim {
-      font-size: 75px;
-      display: inline-block;
-      animation: jimMove 3s ease-in-out infinite;
+    #chat, #login, #home {
+      display: none;
     }
 
-    @keyframes jimMove {
-      0%   { transform: translateY(0) rotate(0deg); }
-      50%  { transform: translateY(-10px) rotate(5deg); }
-      100% { transform: translateY(0) rotate(0deg); }
+    #home {
+      display: block;
     }
+
   </style>
 </head>
 
 <body>
 
-<div class="cloud c1"></div>
-<div class="cloud c2"></div>
-<div class="cloud c3"></div>
-
 <div class="app">
 
-  <div class="topBtns">
-    <div class="miniBtn" onclick="toggleLang()">🌐</div>
-    <div class="miniBtn" onclick="toggleMusic()">🎵</div>
+  <!-- TOP CONTROLS -->
+  <div class="top">
+    <div class="mini" onclick="toggleLang()">🌐</div>
+    <div class="mini" onclick="toggleMusic()">🎵</div>
   </div>
 
-  <div class="jim">🤖</div>
+  <!-- HOME / ONBOARDING -->
+  <div id="home">
+    <div class="jim">🤖</div>
 
-  <h2>HeyJim</h2>
+    <h2 id="title"></h2>
+    <p id="subtitle"></p>
+    <p id="onboarding"></p>
 
+    <button onclick="goLogin()" id="startBtn"></button>
+  </div>
+
+  <!-- LOGIN -->
   <div id="login">
-    <input id="nameInput" placeholder="Enter your name">
-    <button onclick="login()">Start</button>
+    <input id="nameInput">
+    <button onclick="login()" id="loginBtn"></button>
   </div>
 
-  <div id="chat" style="display:none;">
+  <!-- CHAT -->
+  <div id="chat">
     <div id="text"></div>
     <div id="options"></div>
   </div>
 
 </div>
 
-<!-- 🎵 MUSIC LOOP (GOOGLE DRIVE FIXED) -->
-<audio id="bgMusic" loop>
-  <source src="https://drive.google.com/uc?export=download&id=1Td3OLZVvYA-kgyzbUiFAqSvdazzsZbHs" type="audio/mp3">
-</audio>
+<!-- MUSIC -->
+<audio id="music" loop></audio>
 
 <script>
+/* ================================
+   API
+================================ */
 const API = "https://script.google.com/macros/s/AKfycbyqoVUlQyZHE9J51BKVElQTIx_i7ZBZFZ5fvknwqFr9Nh0hz42RrI0Zp5zvW0LCKpXa4g/exec";
 
-let userName = "";
-let lastEmotion = "";
+/* ================================
+   STATE
+================================ */
+let user = "";
+let emotion = "";
 let lang = "EN";
-let musicOn = false;
+let music = false;
 
-/* 🌐 TEXTOS */
+/* ================================
+   TRANSLATIONS
+================================ */
 const T = {
-  EN: {
-    welcome: (n)=>`Nice to meet you, ${n}. 🌤️`,
-    back: (n,e)=>`Welcome back ${n}. Last time you felt ${e}.`,
-    feeling: "How have you been feeling lately?",
-    anxious: "Anxious",
-    sad: "Sad",
-    stressed: "Stressed",
-    notsure: "Not sure",
-    thanks: "Thanks for sharing. Let's take this step by step.",
-    continue: "Continue",
-    game: "Play a short game",
-    relax: "Just talk",
-    end: "I'm really glad you stayed here today 🌤️",
-    restart: "Restart"
+
+  title: {
+    en: "HeyJim",
+    pt: "HeyJim"
   },
-  PT: {
-    welcome: (n)=>`Prazer em te conhecer, ${n}. 🌤️`,
-    back: (n,e)=>`Bem-vindo de volta ${n}. Na última vez você se sentiu ${e}.`,
-    feeling: "Como você tem se sentido ultimamente?",
-    anxious: "Ansioso",
-    sad: "Triste",
-    stressed: "Estressado",
-    notsure: "Não sei",
-    thanks: "Obrigado por compartilhar. Vamos com calma, um passo de cada vez.",
-    continue: "Continuar",
-    game: "Jogar algo rápido",
-    relax: "Só conversar",
-    end: "Fico feliz que você ficou aqui hoje 🌤️",
-    restart: "Recomeçar"
-  }
+
+  subtitle: {
+    en: "May: Mental Awareness Month",
+    pt: "Maio: Mês da Conscientização da Saúde Mental"
+  },
+
+  onboarding: {
+    en: "Mental Health Awareness Month exists to raise awareness, reduce stigma and encourage emotional well-being.",
+    pt: "O Mês da Saúde Mental existe para aumentar a conscientização, reduzir estigmas e promover bem-estar emocional."
+  },
+
+  start: { en:"Start", pt:"Começar" },
+
+  loginPlaceholder: { en:"Enter your name", pt:"Digite seu nome" },
+
+  loginBtn: { en:"Start", pt:"Iniciar" },
+
+  feeling: {
+    en:"How have you been feeling lately?",
+    pt:"Como você tem se sentido ultimamente?"
+  },
+
+  anxious: { en:"Anxious", pt:"Ansioso" },
+  sad: { en:"Sad", pt:"Triste" },
+  stressed: { en:"Stressed", pt:"Estressado" },
+  notsure: { en:"Not sure", pt:"Não sei" },
+
+  thoughts: { en:"Thoughts", pt:"Pensamentos" },
+  body: { en:"Body", pt:"Corpo" },
+
+  continue: { en:"Continue", pt:"Continuar" },
+
+  cvv: { en:"CVV Support", pt:"Apoio CVV" },
+
+  restart: { en:"Restart", pt:"Recomeçar" }
 };
 
-/* 🎵 MUSIC */
+/* ================================
+   TRANSLATION HELPER
+================================ */
+function t(obj){
+  return obj[lang === "EN" ? "en" : "pt"];
+}
+
+/* ================================
+   INIT UI
+================================ */
+function init(){
+  document.getElementById("title").innerText = t(T.title);
+  document.getElementById("subtitle").innerText = t(T.subtitle);
+  document.getElementById("onboarding").innerText = t(T.onboarding);
+  document.getElementById("startBtn").innerText = t(T.start);
+  document.getElementById("loginBtn").innerText = t(T.loginBtn);
+  document.getElementById("nameInput").placeholder = t(T.loginPlaceholder);
+}
+init();
+
+/* ================================
+   MUSIC FIX (REAL WORKING)
+================================ */
+function unlockMusic(){
+  const a = document.getElementById("music");
+  a.src = "https://docs.google.com/uc?export=open&id=1Td3OLZVvYA-kgyzbUiFAqSvdazzsZbHs";
+  a.play().catch(()=>{});
+  music = true;
+}
+
 function toggleMusic(){
-  const a = document.getElementById("bgMusic");
-  if(!a) return;
-
-  if(musicOn){
-    a.pause();
-  } else {
-    a.currentTime = 0;
-    a.play().catch(()=>{});
-  }
-  musicOn = !musicOn;
+  const a = document.getElementById("music");
+  if(music) a.pause();
+  else a.play().catch(()=>{});
+  music = !music;
 }
 
-/* 🌐 LANGUAGE */
+/* ================================
+   LANGUAGE
+================================ */
 function toggleLang(){
-  lang = (lang === "EN") ? "PT" : "EN";
-  refreshUI();
+  lang = lang === "EN" ? "PT" : "EN";
+  init();
 }
 
-/* 🔁 REFRESH UI */
-function refreshUI(){
-  document.getElementById("options").innerHTML = "";
-  ask();
+/* ================================
+   NAVIGATION
+================================ */
+function goLogin(){
+  unlockMusic();
+  document.getElementById("home").style.display = "none";
+  document.getElementById("login").style.display = "block";
 }
 
-/* 🎨 BACKGROUND */
-function setBackground(mood){
-  if(mood === "sad"){
-    document.body.style.background = "linear-gradient(180deg, #5C6BC0, #1A237E)";
-  } else if(mood === "anxious"){
-    document.body.style.background = "linear-gradient(180deg, #FFB74D, #E65100)";
-  } else if(mood === "stressed"){
-    document.body.style.background = "linear-gradient(180deg, #EF5350, #B71C1C)";
-  } else {
-    document.body.style.background = "linear-gradient(180deg, #6EC6FF, #EAF6FF)";
-  }
-}
-
-/* 🤖 JIM */
-function setMood(mood){
-  const jim = document.getElementById("jim");
-  if(!jim) return;
-
-  if(mood === "sad") jim.style.transform = "scale(0.9)";
-  else if(mood === "anxious") jim.style.transform = "scale(1.1)";
-  else jim.style.transform = "scale(1)";
-}
-
-/* LOGIN */
+/* ================================
+   LOGIN
+================================ */
 function login(){
   const name = document.getElementById("nameInput").value;
 
   fetch(API + "?action=login&name=" + encodeURIComponent(name))
   .then(r=>r.json())
   .then(d=>{
-    userName = name;
-    lastEmotion = d.lastEmotion || "";
 
-    document.getElementById("login").style.display="none";
-    document.getElementById("chat").style.display="block";
+    user = name;
+    emotion = d.lastEmotion || "";
 
-    if(d.status==="returning"){
-      setBackground(lastEmotion);
-      show(T[lang].back(d.firstName, lastEmotion), [
-        {label:"OK", action: ask}
-      ]);
-    } else {
-      show(T[lang].welcome(d.firstName), [
-        {label:"OK", action: ask}
-      ]);
-    }
+    document.getElementById("login").style.display = "none";
+    document.getElementById("chat").style.display = "block";
+
+    show(t(T.feeling), [
+      {label:t(T.anxious), action: anxiousFlow},
+      {label:t(T.sad), action: sadFlow},
+      {label:t(T.stressed), action: stressFlow},
+      {label:t(T.notsure), action: neutralFlow}
+    ]);
   });
 }
 
-/* UI */
-function show(text, opts){
+/* ================================
+   CHAT UI
+================================ */
+function show(text, options){
   document.getElementById("text").innerText = text;
-  const d = document.getElementById("options");
-  d.innerHTML="";
+  const box = document.getElementById("options");
+  box.innerHTML = "";
 
-  opts.forEach(o=>{
-    const b=document.createElement("button");
-    b.innerText = typeof o.label === "function" ? o.label() : o.label;
-    b.onclick=o.action;
-    d.appendChild(b);
+  options.forEach(o=>{
+    const b = document.createElement("button");
+    b.innerText = o.label;
+    b.onclick = o.action;
+    box.appendChild(b);
   });
 }
 
-/* FLOW */
-function ask(){
-  show(T[lang].feeling, [
-    {label:()=>T[lang].anxious, action: anxiousFlow},
-    {label:()=>T[lang].sad, action: sadFlow},
-    {label:()=>T[lang].stressed, action: stressFlow},
-    {label:()=>T[lang].notsure, action: notSureFlow}
-  ]);
-}
-
-/* 🧠 ANXIOUS */
+/* ================================
+   ANXIETY TREE
+================================ */
 function anxiousFlow(){
-  setMood("anxious");
-  setBackground("anxious");
+  emotion = "anxious";
 
   show(lang==="EN"
-    ? "I hear you. Is it more in your thoughts or your body?"
-    : "Entendi. Isso está mais nos seus pensamentos ou no seu corpo?",
+    ?"Is it in your thoughts or your body?"
+    :"Está nos seus pensamentos ou no seu corpo?",
   [
-    {label:"Thoughts", action: anxiousThoughts},
-    {label:"Body", action: anxiousBody}
+    {label:t(T.thoughts), action: grounding},
+    {label:t(T.body), action: grounding}
   ]);
 }
 
-function anxiousThoughts(){
-  show(lang==="EN"
-    ? "Let's slow those thoughts down a bit."
-    : "Vamos desacelerar esses pensamentos.",
-  [
-    {label:T[lang].continue, action: breathing},
-    {label:T[lang].game, action: game}
-  ]);
-}
-
-function anxiousBody(){
-  show(lang==="EN"
-    ? "Your body is reacting. Let's relax it."
-    : "Seu corpo está reagindo. Vamos relaxar.",
-  [
-    {label:T[lang].continue, action: breathing},
-    {label:T[lang].game, action: game}
-  ]);
-}
-
-/* 💙 SAD */
-function sadFlow(){
-  setMood("sad");
-  setBackground("sad");
-
-  show(lang==="EN"
-    ? "Has this been going on for a while?"
-    : "Isso já vem acontecendo há um tempo?",
-  [
-    {label:"Yes", action: sadDeep},
-    {label:"No", action: reflect}
-  ]);
-}
-
-function sadDeep(){
-  show(lang==="EN"
-    ? "That sounds heavy... you're not alone."
-    : "Isso parece pesado... você não está sozinho.",
-  [
-    {label:T[lang].game, action: game},
-    {label:T[lang].continue, action: reflect}
-  ]);
-}
-
-/* 🔥 STRESS */
-function stressFlow(){
-  setMood("stressed");
-  setBackground("stressed");
-
-  show(lang==="EN"
-    ? "What's been stressing you the most?"
-    : "O que mais está te estressando?",
-  [
-    {label:"Too many things", action: reflect},
-    {label:"People", action: reflect}
-  ]);
-}
-
-/* 🤍 NOT SURE */
-function notSureFlow(){
-  show(lang==="EN"
-    ? "That's okay. We can figure it out together."
-    : "Tudo bem não saber. Vamos entender juntos.",
-  [
-    {label:T[lang].game, action: game},
-    {label:T[lang].continue, action: reflect}
-  ]);
-}
-
-/* 🌬️ BREATHING */
-function breathing(){
-  show(lang==="EN"
-    ? "Breathe in... hold... and out slowly."
-    : "Inspire... segure... e solte devagar.",
-  [
-    {label:T[lang].continue, action: reflect}
-  ]);
-}
-
-/* 💭 REFLECT */
-function reflect(){
-  show(lang==="EN"
-    ? "You're doing better than you think."
-    : "Você está indo melhor do que imagina.",
-  [
-    {label:T[lang].game, action: game},
-    {label:T[lang].continue, action: end}
-  ]);
-}
-
-/* 🎮 GAME */
-function game(){
-  show(lang==="EN"
-    ? "Find something BLUE 👀"
-    : "Encontre algo AZUL 👀",
-  [
-    {label:"Found", action: step2}
-  ]);
+/* ================================
+   GROUNDING GAME
+================================ */
+function grounding(){
+  show(lang==="EN"?"Find something BLUE":"Encontre algo AZUL",[{
+    label:"OK", action: step2
+  }]);
 }
 
 function step2(){
-  show(lang==="EN"
-    ? "Now something GREEN 🌿"
-    : "Agora algo VERDE 🌿",
-  [
-    {label:"Found", action: step3}
-  ]);
+  show(lang==="EN"?"Find something GREEN":"Encontre algo VERDE",[{
+    label:"OK", action: step3
+  }]);
 }
 
 function step3(){
+  show(lang==="EN"?"Find something RED":"Encontre algo VERMELHO",[{
+    label:"Done", action: end
+  }]);
+}
+
+/* ================================
+   SAD FLOW
+================================ */
+function sadFlow(){
+  emotion = "sad";
+
   show(lang==="EN"
-    ? "Now something RED ❤️"
-    : "Agora algo VERMELHO ❤️",
+    ?"Has this been happening for a while?"
+    :"Isso vem acontecendo há um tempo?",
   [
-    {label:"Done", action:end}
+    {label:"Yes", action:end},
+    {label:"No", action:end}
   ]);
 }
 
-/* FINAL */
-function end(){
-  setBackground("normal");
+/* ================================
+   STRESS FLOW
+================================ */
+function stressFlow(){
+  emotion = "stressed";
 
-  fetch(API + "?action=update&name="+encodeURIComponent(userName)+"&emotion="+lastEmotion);
-
-  show(T[lang].end, [
-    {label:T[lang].restart, action: ask}
+  show(lang==="EN"
+    ?"What feels heavier?"
+    :"O que está mais pesado?",
+  [
+    {label:"Work", action:end},
+    {label:"Everything", action:end}
   ]);
+}
+
+/* ================================
+   NEUTRAL
+================================ */
+function neutralFlow(){
+  show(lang==="EN"
+    ?"That's okay. Let's continue."
+    :"Tudo bem. Vamos continuar.",
+  [{label:t(T.continue), action:end}]);
+}
+
+/* ================================
+   ENDING
+================================ */
+function end(){
+
+  fetch(API + "?action=update&name="+encodeURIComponent(user)+"&emotion="+emotion+"&activity=end");
+
+  show(
+    lang==="EN"
+      ?"I'm proud of you for being here today 🌤️"
+      :"Tenho orgulho de você por estar aqui hoje 🌤️",
+    [
+      {label:t(T.cvv), action:()=>window.open("https://www.cvv.org.br/")},
+      {label:t(T.restart), action:()=>location.reload()}
+    ]
+  );
 }
 </script>
 
