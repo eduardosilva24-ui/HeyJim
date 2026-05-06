@@ -42,7 +42,6 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       gap: 10px;
       border-radius: 25px;
       backdrop-filter: blur(15px);
@@ -65,18 +64,6 @@
       background: linear-gradient(45deg,#FFD54F,#FFB300);
       cursor: pointer;
       font-weight: bold;
-      transition: 0.2s;
-    }
-
-    button:hover { transform: scale(1.03); }
-
-    #text {
-      margin: 20px 0;
-      min-height: 70px;
-      max-width: 320px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
 
     .topBtns {
@@ -95,7 +82,17 @@
       font-size: 12px;
     }
 
-    .jim { font-size: 75px; }
+    .jim {
+      font-size: 75px;
+      display: inline-block;
+      animation: jimMove 3s ease-in-out infinite;
+    }
+
+    @keyframes jimMove {
+      0%   { transform: translateY(0) rotate(0deg); }
+      50%  { transform: translateY(-10px) rotate(5deg); }
+      100% { transform: translateY(0) rotate(0deg); }
+    }
   </style>
 </head>
 
@@ -117,8 +114,8 @@
   <h2>HeyJim</h2>
 
   <div id="login">
-    <input id="nameInput" placeholder="">
-    <button onclick="login()" id="startBtn"></button>
+    <input id="nameInput" placeholder="Enter your name">
+    <button onclick="login()">Start</button>
   </div>
 
   <div id="chat" style="display:none;">
@@ -128,8 +125,9 @@
 
 </div>
 
+<!-- 🎵 MUSIC LOOP (GOOGLE DRIVE FIXED) -->
 <audio id="bgMusic" loop>
-  <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_115b9b0b4e.mp3">
+  <source src="https://drive.google.com/uc?export=download&id=1Td3OLZVvYA-kgyzbUiFAqSvdazzsZbHs" type="audio/mp3">
 </audio>
 
 <script>
@@ -150,29 +148,27 @@ const T = {
     sad: "Sad",
     stressed: "Stressed",
     notsure: "Not sure",
+    thanks: "Thanks for sharing. Let's take this step by step.",
     continue: "Continue",
     game: "Play a short game",
     relax: "Just talk",
     end: "I'm really glad you stayed here today 🌤️",
-    restart: "Restart",
-    start: "Start",
-    placeholder: "Enter your full name"
+    restart: "Restart"
   },
   PT: {
     welcome: (n)=>`Prazer em te conhecer, ${n}. 🌤️`,
-    back: (n,e)=>`Bem-vindo de volta ${n}. Última vez você se sentiu ${e}.`,
+    back: (n,e)=>`Bem-vindo de volta ${n}. Na última vez você se sentiu ${e}.`,
     feeling: "Como você tem se sentido ultimamente?",
     anxious: "Ansioso",
     sad: "Triste",
     stressed: "Estressado",
     notsure: "Não sei",
+    thanks: "Obrigado por compartilhar. Vamos com calma, um passo de cada vez.",
     continue: "Continuar",
     game: "Jogar algo rápido",
     relax: "Só conversar",
     end: "Fico feliz que você ficou aqui hoje 🌤️",
-    restart: "Recomeçar",
-    start: "Começar",
-    placeholder: "Digite seu nome completo"
+    restart: "Recomeçar"
   }
 };
 
@@ -183,16 +179,9 @@ function toggleMusic(){
   musicOn = !musicOn;
 }
 
-/* 🌐 FIX: atualiza toda interface */
+/* 🌐 */
 function toggleLang(){
   lang = (lang === "EN") ? "PT" : "EN";
-  applyLanguage();
-}
-
-/* 🔁 aplica idioma na UI */
-function applyLanguage(){
-  document.getElementById("nameInput").placeholder = T[lang].placeholder;
-  document.getElementById("startBtn").innerText = T[lang].start;
 }
 
 /* 🎨 BACKGROUND */
@@ -206,6 +195,16 @@ function setBackground(mood){
   } else {
     document.body.style.background = "linear-gradient(180deg, #6EC6FF, #EAF6FF)";
   }
+}
+
+/* 🤖 JIM */
+function setMood(mood){
+  const jim = document.getElementById("jim");
+  if(!jim) return;
+
+  if(mood === "sad") jim.style.transform = "scale(0.9)";
+  else if(mood === "anxious") jim.style.transform = "scale(1.1)";
+  else jim.style.transform = "scale(1)";
 }
 
 /* LOGIN */
@@ -248,18 +247,158 @@ function show(text, opts){
   });
 }
 
-/* FLOW */
+/* FLOW PRINCIPAL */
 function ask(){
   show(T[lang].feeling, [
-    {label:T[lang].anxious, action:()=>alert("flow")},
-    {label:T[lang].sad, action:()=>alert("flow")},
-    {label:T[lang].stressed, action:()=>alert("flow")},
-    {label:T[lang].notsure, action:()=>alert("flow")}
+    {label:T[lang].anxious, action: anxiousFlow},
+    {label:T[lang].sad, action: sadFlow},
+    {label:T[lang].stressed, action: stressFlow},
+    {label:T[lang].notsure, action: notSureFlow}
   ]);
 }
 
-/* INIT */
-applyLanguage();
+/* 🧠 ANXIOUS */
+function anxiousFlow(){
+  setMood("anxious");
+  setBackground("anxious");
+
+  show(lang==="EN"
+    ? "I hear you. Does it feel more in your thoughts or your body?"
+    : "Entendi. Isso está mais nos seus pensamentos ou no seu corpo?",
+  [
+    {label:"Thoughts", action: anxiousThoughts},
+    {label:"Body", action: anxiousBody}
+  ]);
+}
+
+function anxiousThoughts(){
+  show(lang==="EN"
+    ? "Sometimes thoughts run too fast. Let's slow them down."
+    : "Às vezes os pensamentos aceleram demais. Vamos desacelerar.",
+  [
+    {label: T[lang].continue, action: breathing},
+    {label: T[lang].game, action: game}
+  ]);
+}
+
+function anxiousBody(){
+  show(lang==="EN"
+    ? "Your body is reacting. Let's help it relax."
+    : "Seu corpo está reagindo. Vamos ajudar ele a relaxar.",
+  [
+    {label: T[lang].continue, action: breathing},
+    {label: T[lang].game, action: game}
+  ]);
+}
+
+/* 💙 SAD */
+function sadFlow(){
+  setMood("sad");
+  setBackground("sad");
+
+  show(lang==="EN"
+    ? "Has this been going on for a while?"
+    : "Isso já vem acontecendo há algum tempo?",
+  [
+    {label:"Yes", action: sadDeep},
+    {label:"No", action: reflect}
+  ]);
+}
+
+function sadDeep(){
+  show(lang==="EN"
+    ? "That can feel heavy... you're not alone."
+    : "Isso pode ser pesado... você não está sozinho nisso.",
+  [
+    {label: T[lang].game, action: game},
+    {label: T[lang].continue, action: reflect}
+  ]);
+}
+
+/* 🔥 STRESS */
+function stressFlow(){
+  setMood("stressed");
+  setBackground("stressed");
+
+  show(lang==="EN"
+    ? "What feels like the biggest pressure right now?"
+    : "O que está te pressionando mais agora?",
+  [
+    {label:"Too many things", action: reflect},
+    {label:"People", action: reflect}
+  ]);
+}
+
+/* 🤍 NOT SURE */
+function notSureFlow(){
+  show(lang==="EN"
+    ? "That's completely okay. We can figure it out slowly."
+    : "Tudo bem não saber. Vamos entender isso com calma.",
+  [
+    {label: T[lang].game, action: game},
+    {label: T[lang].continue, action: reflect}
+  ]);
+}
+
+/* 🌬️ BREATHING */
+function breathing(){
+  show(lang==="EN"
+    ? "Breathe in... hold... and out slowly."
+    : "Inspire... segure... e solte devagar.",
+  [
+    {label: T[lang].continue, action: reflect}
+  ]);
+}
+
+/* 💭 REFLECTION */
+function reflect(){
+  show(lang==="EN"
+    ? "You're doing your best, and that already matters."
+    : "Você está fazendo o seu melhor, e isso já importa muito.",
+  [
+    {label: T[lang].game, action: game},
+    {label: T[lang].continue, action: end}
+  ]);
+}
+
+/* 🎮 GAME */
+function game(){
+  show(lang==="EN"
+    ? "Look around and find something BLUE 👀"
+    : "Olhe ao redor e encontre algo AZUL 👀",
+  [
+    {label:"Found", action: step2}
+  ]);
+}
+
+function step2(){
+  show(lang==="EN"
+    ? "Now something GREEN 🌿"
+    : "Agora algo VERDE 🌿",
+  [
+    {label:"Found", action: step3}
+  ]);
+}
+
+function step3(){
+  show(lang==="EN"
+    ? "And finally something RED ❤️"
+    : "E por último algo VERMELHO ❤️",
+  [
+    {label:"Done", action:end}
+  ]);
+}
+
+/* FINAL */
+function end(){
+  setBackground("normal");
+
+  fetch(API + "?action=update&name="+encodeURIComponent(userName)+"&emotion="+lastEmotion);
+
+  show(T[lang].end, [
+    {label:T[lang].restart, action: ask}
+  ]);
+}
 </script>
 
 </body>
