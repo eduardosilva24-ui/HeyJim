@@ -191,6 +191,31 @@
 
   .jim-icon { font-size: 80px; animation: float 4s ease-in-out infinite; text-align: center; margin: 20px 0; }
   @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+.small-victory-input{width:100%;padding:14px;border-radius:14px;border:1px solid rgba(0,0,0,0.06);margin-top:12px;background:rgba(255,255,255,0.92);font-family:inherit;box-shadow:0 8px 20px rgba(0,0,0,0.04)}
+
+/* Respiração: animação suave do círculo (4s in, 4s hold, 4s out) */
+@keyframes breathCycle {
+  0%{transform:scale(1);background:var(--coral)}
+  33%{transform:scale(1.6);background:var(--mint)}
+  66%{transform:scale(1.6);background:var(--mint)}
+  100%{transform:scale(1);background:var(--coral)}
+}
+.breath-circle.animate{animation:breathCycle 12s linear infinite}
+
+.breath-circle-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center}
+
+/* Ajustes visuais para o botão de terminar respiração */
+#breath-controls .btn{border-radius:20px}
+
+/* Mood Meter styles */
+.mood-meter{width:100%;max-width:360px;margin:12px auto;background:linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.9));padding:14px;border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,0.06);border:1px solid rgba(255,255,255,0.6)}
+.emoji-row{display:flex;justify-content:space-between;margin-bottom:8px;padding:0 8px}
+.mood-emoji{font-size:26px;transition:transform 0.25s ease, opacity 0.25s ease;cursor:pointer;user-select:none;padding:8px;border-radius:12px;background:rgba(255,255,255,0.4)}
+#moodRange{width:100%;-webkit-appearance:none;height:6px;border-radius:6px;background:linear-gradient(90deg,var(--mint),var(--gold));outline:none;margin-top:8px}
+#moodRange::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:white;box-shadow:0 6px 18px rgba(0,0,0,0.12);border:3px solid rgba(255,255,255,0.6);cursor:pointer}
+.mood-label{margin-top:8px;font-weight:600;color:var(--text-soft)}
+.mood-emoji:hover{transform:translateY(-6px) scale(1.15)}
+
 </style>
 </head>
 <body>
@@ -269,6 +294,63 @@ const CONTENT = {
   }
 };
 
+const T = {
+  pt: {
+    awarenessTitle: "Maio Verde — Mês da Consciencialização da Saúde Mental",
+    awarenessLine1: "Surgiu em 1949 pela Mental Health America para reduzir o estigma e celebrar a recuperação.",
+    awarenessLine2: "O HeyJim é um porto seguro imediato — aqui ninguém enfrenta momentos difíceis sozinho.",
+    awarenessButton: "Continuar",
+    breath: {
+      inhale: "Inspire profundamente...",
+      hold: "Segure o ar...",
+      exhale: "Solte devagar pelo nariz...",
+      pause: "Aguarde o próximo ciclo..."
+    },
+    smallVictories: {
+      title: "Pequenas Vitórias",
+      placeholders: ["Uma coisa boa nº1...", "Uma coisa boa nº2...", "Uma coisa boa nº3..."],
+      button: "Concluir e finalizar"
+    },
+    breathingFinish: "Terminar exercício",
+    moodMeter: {
+      title: "Como você está agora?",
+      prompt: "Arraste o emoji que melhor representa seu humor",
+      emojis: ["😭","😟","😐","🙂","😄"],
+      labels: ["Muito mal","Mal","Neutro","Bem","Ótimo"],
+      confirm: "Confirmar humor",
+      skip: "Pular",
+      thanks: "Obrigado por compartilhar."
+    }
+  },
+  en: {
+    awarenessTitle: "Green May — Mental Health Awareness Month",
+    awarenessLine1: "Started in 1949 by Mental Health America to reduce stigma and celebrate recovery.",
+    awarenessLine2: "HeyJim was created as an immediate safe harbor so no one faces hard moments alone.",
+    awarenessButton: "Continue",
+    breath: {
+      inhale: "Breathe in deeply...",
+      hold: "Hold the breath...",
+      exhale: "Exhale slowly through the nose...",
+      pause: "Wait for the next cycle..."
+    },
+    smallVictories: {
+      title: "Small Victories",
+      placeholders: ["One good thing #1...","One good thing #2...","One good thing #3..."],
+      button: "Finish and close"
+    },
+    breathingFinish: "Finish exercise",
+    moodMeter: {
+      title: "How are you feeling now?",
+      prompt: "Slide the emoji that best matches your mood",
+      emojis: ["😭","😟","😐","🙂","😄"],
+      labels: ["Very bad","Bad","Neutral","Good","Great"],
+      confirm: "Confirm mood",
+      skip: "Skip",
+      thanks: "Thanks for sharing."
+    }
+  }
+};
+
 /* --- NAVEGAÇÃO E BÁSICO --- */
 
 function nextScreen(id) {
@@ -308,21 +390,96 @@ async function speak(text, delay = 1500) {
 }
 
 async function startMainFlow() {
-  await speak(`Olá, ${state.user}. Que bom que você parou um pouco.`);
-  await speak(CONTENT.pt.initial);
-  
+  // Mostrar introdução do Maio Verde antes do fluxo principal
+  renderAwarenessIntro();
+}
+
+function renderAwarenessIntro() {
   const body = document.getElementById('chat-body');
+  body.innerHTML = `
+    <div style="text-align:center; padding:10px">
+      <h2>${T.pt.awarenessTitle}</h2>
+      <p class="prose" style="margin-top:10px;">${T.pt.awarenessLine1}</p>
+      <p class="prose" style="margin-top:6px;">${T.pt.awarenessLine2}</p>
+      <div style="height:18px"></div>
+      <div class="jim-icon" style="font-size:60px">💚</div>
+      <button class="btn btn-primary" style="margin-top:16px;" onclick="startMainFlowContinue()">${T.pt.awarenessButton}</button>
+    </div>
+  `;
+}
+
+// --- Mood Meter (Emoji Slider) ---
+function renderMoodMeter(){
+  const body = document.getElementById('chat-body');
+  body.innerHTML = `
+    <div style="text-align:center; padding:6px">
+      <h2>${T.pt.moodMeter.title}</h2>
+      <p class="prose" style="margin-top:8px;">${T.pt.moodMeter.prompt}</p>
+      <div style="height:10px"></div>
+      <div class="mood-meter" id="moodMeter">
+        <div class="emoji-row" id="emojiRow"></div>
+        <input type="range" min="0" max="4" value="2" step="1" id="moodRange" />
+        <div class="mood-label" id="moodLabel"></div>
+      </div>
+      <div style="height:10px"></div>
+      <div style="display:flex; gap:10px; justify-content:center;">
+        <button class="btn btn-ghost" onclick="showEmotionGrid()">${T.pt.moodMeter.skip}</button>
+        <button class="btn btn-primary" onclick="handleMoodConfirm()">${T.pt.moodMeter.confirm}</button>
+      </div>
+    </div>
+  `;
+
+  // render emojis
+  const row = document.getElementById('emojiRow');
+  T.pt.moodMeter.emojis.forEach((e, idx) => {
+    const span = document.createElement('div');
+    span.className = 'mood-emoji';
+    span.innerText = e;
+    span.dataset.idx = idx;
+    span.onclick = () => { document.getElementById('moodRange').value = idx; updateMoodUI(idx); };
+    row.appendChild(span);
+  });
+
+  const range = document.getElementById('moodRange');
+  range.oninput = (ev) => updateMoodUI(ev.target.value);
+  updateMoodUI(range.value);
+}
+
+function updateMoodUI(idx){
+  idx = Number(idx);
+  const emojis = document.querySelectorAll('.mood-emoji');
+  emojis.forEach((el,i)=> el.style.transform = (i===idx) ? 'translateY(-8px) scale(1.2)' : 'translateY(0) scale(1)' );
+  const label = document.getElementById('moodLabel');
+  label.innerText = T.pt.moodMeter.labels[idx];
+  emojis.forEach((el,i)=> el.style.opacity = (i===idx) ? '1' : '0.5');
+}
+
+function handleMoodConfirm(){
+  const idx = document.getElementById('moodRange').value;
+  state.mood = idx;
+  speak(T.pt.moodMeter.thanks).then(() => { showEmotionGrid(); });
+}
+
+function showEmotionGrid(){
+  const body = document.getElementById('chat-body');
+  body.innerHTML = '';
   const grid = document.createElement('div');
-  grid.className = "choice-grid";
-  
+  grid.className = 'choice-grid';
   CONTENT.pt.emotions.forEach(emo => {
     const card = document.createElement('div');
-    card.className = "choice-card";
+    card.className = 'choice-card';
     card.innerHTML = `<span class="emoji">${emo.emoji}</span>${emo.label}`;
     card.onclick = () => handleEmotionSelection(emo.id);
     grid.appendChild(card);
   });
   body.appendChild(grid);
+}
+
+async function startMainFlowContinue() {
+  await speak(`Olá, ${state.user}. Que bom que você parou um pouco.`);
+  await speak(CONTENT.pt.initial);
+  // Primeiro passo interativo: Mood Meter
+  renderMoodMeter();
 }
 
 async function handleEmotionSelection(id) {
@@ -331,7 +488,10 @@ async function handleEmotionSelection(id) {
   if(id === 'anxious' || id === 'stressed') {
     await speak("Quando a mente corre, o corpo sofre. Vamos começar com a Respiração Quadrada.");
     renderBreathingExercise();
-  } else if(id === 'sad' || id === 'overwhelmed') {
+  } else if(id === 'sad') {
+    await speak("Às vezes as palavras ajudam a esvaziar o que está cheio demais.");
+    renderSmallVictories();
+  } else if(id === 'overwhelmed') {
     await speak("Às vezes as palavras ajudam a esvaziar o que está cheio demais.");
     renderJournaling();
   }
@@ -345,40 +505,54 @@ function renderBreathingExercise() {
     <p class="prose" id="breath-instr">Prepare-se para inspirar...</p>
     <div class="breath-circle-wrap">
       <div class="breath-circle" id="b-circle">Aguarde</div>
+      <div id="breath-controls" style="margin-top:14px;width:100%;display:flex;justify-content:center"></div>
     </div>
   `;
   
   let cycles = 0;
   const circle = document.getElementById('b-circle');
   const instr = document.getElementById('breath-instr');
+  const controls = document.getElementById('breath-controls');
+  
+  // mínimo de ciclos: 2 para estados sobrecarregados/estressados, 4 caso contrário
+  const minCycles = (state.emotion === 'stressed' || state.emotion === 'overwhelmed') ? 2 : 4;
+  let finishBtnAdded = false;
   
   const runCycle = () => {
-    if(cycles >= 4) { // 4 ciclos de 16 segundos = ~1 minuto de exercício puro
-      startGrounding();
-      return;
-    }
-    
     // Inspirar (4s)
-    instr.innerText = "Inspire profundamente...";
-    circle.className = "breath-circle expand";
+    instr.innerText = T.pt.breath.inhale;
+    circle.className = "breath-circle expand animate";
     circle.innerText = "Inspirar";
     
     setTimeout(() => {
       // Segurar (4s)
-      instr.innerText = "Segure o ar...";
+      instr.innerText = T.pt.breath.hold;
       circle.innerText = "Segurar";
       
       setTimeout(() => {
         // Expirar (4s)
-        instr.innerText = "Solte devagar pelo nariz...";
-        circle.className = "breath-circle contract";
+        instr.innerText = T.pt.breath.exhale;
+        circle.className = "breath-circle contract animate";
         circle.innerText = "Expirar";
         
         setTimeout(() => {
           // Pausa (4s)
-          instr.innerText = "Aguarde o próximo ciclo...";
+          instr.innerText = T.pt.breath.pause;
           circle.innerText = "Pausa";
           cycles++;
+
+          if(cycles >= minCycles && !finishBtnAdded) {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-primary';
+            btn.style.width = '60%';
+            btn.style.marginTop = '14px';
+            btn.innerText = T.pt.breathingFinish;
+            btn.onclick = () => startGrounding();
+            controls.appendChild(btn);
+            finishBtnAdded = true;
+            return; // espera que o usuário clique
+          }
+
           setTimeout(runCycle, 4000);
         }, 4000);
       }, 4000);
@@ -436,6 +610,47 @@ async function renderJournaling() {
   btn.innerText = "Terminei de escrever";
   btn.onclick = finishSession;
   body.appendChild(btn);
+}
+
+// Pequenas Vitórias — atividade interativa para emoções de tristeza
+async function renderSmallVictories() {
+  await speak(T.pt.smallVictories.title);
+  const body = document.getElementById('chat-body');
+  body.innerHTML = `<h2>${T.pt.smallVictories.title}</h2>`;
+
+  // Campos de input
+  for(let i=1;i<=3;i++){
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `sv${i}`;
+    input.className = 'small-victory-input';
+    input.placeholder = T.pt.smallVictories.placeholders[i-1];
+    body.appendChild(input);
+  }
+
+  // Campo oculto para manter compatibilidade com finishSession
+  const hidden = document.createElement('textarea');
+  hidden.id = 'userJournal';
+  hidden.style.display = 'none';
+  body.appendChild(hidden);
+
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-primary';
+  btn.innerText = T.pt.smallVictories.button;
+  btn.onclick = finishSmallVictories;
+  body.appendChild(btn);
+}
+
+function finishSmallVictories(){
+  const parts = [];
+  for(let i=1;i<=3;i++){
+    const v = document.getElementById(`sv${i}`).value || '';
+    if(v.trim()) parts.push(v.trim());
+  }
+  const combined = parts.join(' \n ');
+  const hidden = document.getElementById('userJournal');
+  if(hidden) hidden.value = combined;
+  finishSession();
 }
 
 /* --- FINALIZAÇÃO --- */
