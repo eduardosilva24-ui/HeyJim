@@ -81,6 +81,7 @@
   #scr-final {
     justify-content: center;
     align-items: center;
+    overflow: hidden;
   }
 
   #final-body {
@@ -89,6 +90,29 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
+    max-height: calc(100% - 20px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+  }
+  
+  #final-body::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  #final-body::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.05);
+    border-radius: 10px;
+  }
+  
+  #final-body::-webkit-scrollbar-thumb {
+    background: rgba(244,162,97,0.4);
+    border-radius: 10px;
+    transition: background 0.3s ease;
+  }
+  
+  #final-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(244,162,97,0.7);
   }
 
   @keyframes slideUp {
@@ -232,7 +256,32 @@
 .mood-label{margin-top:8px;font-weight:600;color:var(--text-soft)}
 .mood-emoji:hover{transform:translateY(-6px) scale(1.15)}
 
-.activity-panel{width:100%;max-height:100%;overflow-y:auto;padding-right:4px;text-align:left}
+.activity-panel{
+  width:100%;
+  max-height:calc(100vh - 200px);
+  height:auto;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding-right:8px;
+  padding-bottom:20px;
+  text-align:left;
+  scroll-behavior:smooth;
+}
+.activity-panel::-webkit-scrollbar{
+  width:8px;
+}
+.activity-panel::-webkit-scrollbar-track{
+  background:rgba(0,0,0,0.05);
+  border-radius:10px;
+}
+.activity-panel::-webkit-scrollbar-thumb{
+  background:rgba(244,162,97,0.4);
+  border-radius:10px;
+  transition:background 0.3s ease;
+}
+.activity-panel::-webkit-scrollbar-thumb:hover{
+  background:rgba(244,162,97,0.7);
+}
 .activity-panel h2{text-align:left}
 .activity-panel .prose{text-align:left}
 .quiz-progress{font-size:12px;font-weight:700;color:var(--gold-dark);margin-bottom:10px;text-transform:uppercase;letter-spacing:0}
@@ -1788,16 +1837,19 @@ function renderActivityQuiz() {
   const question = ACTIVITY_QUIZ[step];
 
   finalBody.innerHTML = `
-    <div class="activity-panel">
+    <div class="activity-panel" style="padding-top:10px;">
       <div class="quiz-progress">Pergunta ${step + 1} de ${ACTIVITY_QUIZ.length}</div>
       <h2>${question.title}</h2>
       <p class="prose">Responda com o que parece mais honesto agora. Jim vai escolher 10 atividades para o seu momento.</p>
-      <div class="quiz-options">
+      <div class="quiz-options" style="margin-bottom:20px;">
         ${question.options.map((option, index) => `
           <button class="quiz-option" onclick="answerActivityQuiz(${index})">${option.label}</button>
         `).join('')}
       </div>
-      <button class="btn btn-ghost" onclick="renderFinalScreen(state.timeSpent || 1)">Voltar</button>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button class="btn btn-primary" onclick="if(state.activityQuiz.step > 0) { state.activityQuiz.step--; renderActivityQuiz(); }">← Voltar</button>
+        <button class="btn btn-ghost" onclick="renderFinalScreen(state.timeSpent || 1)">Cancelar</button>
+      </div>
     </div>
   `;
 }
@@ -1917,11 +1969,11 @@ function renderActivityRecommendations() {
 
   const recommendations = recommendActivities(10);
   finalBody.innerHTML = `
-    <div class="activity-panel">
+    <div class="activity-panel" style="padding-top:10px;">
       <div class="quiz-progress">Suas 10 atividades</div>
       <h2>Próximos passos gentis</h2>
       <p class="prose">Escolha uma só para começar. A meta é presença, não performance.</p>
-      <div style="margin-top:14px;">
+      <div style="margin-top:14px; margin-bottom:20px;">
         ${recommendations.map(item => `
           <div class="activity-card">
             <span class="difficulty-pill difficulty-${item.level}">${ACTIVITY_LEVELS[item.level].emoji} ${ACTIVITY_LEVELS[item.level].label}</span>
@@ -1930,9 +1982,11 @@ function renderActivityRecommendations() {
           </div>
         `).join('')}
       </div>
-      <button class="btn btn-primary" onclick="openActivityQuiz()">Refazer quiz</button>
-      <button class="btn btn-ghost" onclick="renderFullActivityList()">Ver lista completa</button>
-      <button class="btn btn-ghost" onclick="renderFinalScreen(state.timeSpent || 1)">Voltar ao final</button>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button class="btn btn-primary" onclick="openActivityQuiz()">Refazer quiz</button>
+        <button class="btn btn-ghost" onclick="renderFullActivityList()">Ver lista completa</button>
+        <button class="btn btn-ghost" onclick="renderFinalScreen(state.timeSpent || 1)">Voltar ao final</button>
+      </div>
     </div>
   `;
 }
@@ -1942,20 +1996,24 @@ function renderFullActivityList() {
   if(!finalBody) return;
 
   finalBody.innerHTML = `
-    <div class="activity-panel">
+    <div class="activity-panel" style="padding-top:10px;">
       <div class="quiz-progress">Biblioteca de atividades</div>
       <h2>Escolha pelo tamanho do passo</h2>
       <p class="prose">A lista completa fica aqui para quando você quiser explorar sem pressão.</p>
-      ${Object.entries(ACTIVITY_GROUPS).map(([level, names]) => `
-        <div class="activity-list-group">
-          <h3>${ACTIVITY_LEVELS[level].emoji} ${ACTIVITY_LEVELS[level].label}</h3>
-          <div class="activity-chip-list">
-            ${names.map(name => `<span class="activity-chip">${escapeHTML(name)}</span>`).join('')}
+      <div style="margin-bottom:20px;">
+        ${Object.entries(ACTIVITY_GROUPS).map(([level, names]) => `
+          <div class="activity-list-group">
+            <h3>${ACTIVITY_LEVELS[level].emoji} ${ACTIVITY_LEVELS[level].label}</h3>
+            <div class="activity-chip-list">
+              ${names.map(name => `<span class="activity-chip">${escapeHTML(name)}</span>`).join('')}
+            </div>
           </div>
-        </div>
-      `).join('')}
-      <button class="btn btn-primary" onclick="openActivityQuiz()">Fazer quiz</button>
-      <button class="btn btn-ghost" onclick="renderFinalScreen(state.timeSpent || 1)">Voltar ao final</button>
+        `).join('')}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button class="btn btn-primary" onclick="openActivityQuiz()">Fazer quiz</button>
+        <button class="btn btn-ghost" onclick="renderFinalScreen(state.timeSpent || 1)">Voltar ao final</button>
+      </div>
     </div>
   `;
 }
