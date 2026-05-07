@@ -232,6 +232,25 @@
 .mood-label{margin-top:8px;font-weight:600;color:var(--text-soft)}
 .mood-emoji:hover{transform:translateY(-6px) scale(1.15)}
 
+.activity-panel{width:100%;max-height:100%;overflow-y:auto;padding-right:4px;text-align:left}
+.activity-panel h2{text-align:left}
+.activity-panel .prose{text-align:left}
+.quiz-progress{font-size:12px;font-weight:700;color:var(--gold-dark);margin-bottom:10px;text-transform:uppercase;letter-spacing:0}
+.quiz-options{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+.quiz-option{width:100%;padding:15px 16px;border-radius:16px;border:1px solid rgba(0,0,0,0.06);background:white;text-align:left;font-family:inherit;color:var(--text);cursor:pointer;transition:var(--transition);box-shadow:0 8px 22px rgba(0,0,0,0.04)}
+.quiz-option:hover{border-color:var(--gold);transform:translateY(-2px)}
+.activity-card{background:white;border:1px solid rgba(0,0,0,0.05);border-radius:16px;padding:14px 15px;margin-top:10px;box-shadow:0 8px 20px rgba(0,0,0,0.04)}
+.activity-card strong{display:block;font-size:15px;color:var(--text);margin-top:6px}
+.activity-reason{font-size:12px;color:var(--text-soft);line-height:1.45;margin-top:5px}
+.difficulty-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;border-radius:999px;padding:5px 9px}
+.difficulty-simple{background:rgba(168,218,188,0.28);color:#2d8c45}
+.difficulty-medium{background:rgba(244,162,97,0.22);color:#a85f1f}
+.difficulty-hard{background:rgba(224,123,106,0.18);color:#a13f31}
+.activity-list-group{margin-top:18px}
+.activity-list-group h3{font-size:14px;color:var(--text);margin-bottom:8px}
+.activity-chip-list{display:flex;flex-wrap:wrap;gap:8px}
+.activity-chip{font-size:12px;line-height:1.35;background:white;border:1px solid rgba(0,0,0,0.05);border-radius:999px;padding:8px 10px;color:var(--text-soft)}
+
 </style>
 </head>
 <body>
@@ -283,6 +302,7 @@ const state = {
   emotion: "",
   path: "",
   activity: "",
+  activityQuiz: {},
   mood: null,
   music: false,
   apiOnline: true,
@@ -433,6 +453,178 @@ const api = {
 };
 
 window.api = api;
+
+const ACTIVITY_GROUPS = {
+  simple: [
+    "Caminhar ao ar livre",
+    "Ouvir música",
+    "Desenhar rabiscos",
+    "Colorir livros de mandala",
+    "Ler livros leves",
+    "Assistir filmes calmos",
+    "Beber chá com calma",
+    "Cuidar de plantas",
+    "Regar plantas",
+    "Organizar a mesa",
+    "Arrumar a cama com atenção",
+    "Respirar profundamente",
+    "Observar o céu",
+    "Tomar banho relaxante",
+    "Escrever pensamentos soltos",
+    "Escutar sons da natureza",
+    "Alongar o corpo",
+    "Fazer pausa sem celular",
+    "Assistir vídeos leves",
+    "Fazer lista de gratidão",
+    "Observar chuva",
+    "Comer com atenção plena",
+    "Sentar em silêncio",
+    "Ouvir podcast leve",
+    "Tomar sol",
+    "Caminhar devagar",
+    "Massagear mãos",
+    "Massagear pés",
+    "Beber água com calma",
+    "Ficar deitado relaxando",
+    "Sorrir intencionalmente",
+    "Organizar objetos pequenos",
+    "Observar pessoas em um parque",
+    "Fechar os olhos e respirar",
+    "Sentir texturas",
+    "Ouvir música instrumental",
+    "Fazer pausas conscientes",
+    "Abrir janela e respirar ar fresco",
+    "Relaxar sem estímulos",
+    "Agradecer mentalmente o dia"
+  ],
+  medium: [
+    "Fazer yoga",
+    "Pintar com aquarela",
+    "Fazer crochê",
+    "Aprender origami",
+    "Cozinhar receitas simples",
+    "Escrever um diário",
+    "Montar quebra-cabeça",
+    "Jardinagem leve",
+    "Dançar sozinho",
+    "Meditação guiada",
+    "Fazer caminhada longa",
+    "Ler livros mais densos",
+    "Aprender violão básico",
+    "Aprender teclado básico",
+    "Fazer artesanato",
+    "Escrever histórias curtas",
+    "Editar fotos",
+    "Estudar um idioma",
+    "Fazer exercícios em casa",
+    "Criar playlists",
+    "Desenhar objetos reais",
+    "Fazer planejamento da semana",
+    "Estudar algo novo online",
+    "Praticar mindfulness",
+    "Fazer alongamento completo",
+    "Montar álbum de fotos",
+    "Fazer receitas novas",
+    "Aprender caligrafia",
+    "Fazer velas artesanais",
+    "Cuidar de horta simples",
+    "Escrever cartas",
+    "Fazer meditação silenciosa",
+    "Criar projetos de arte",
+    "Fotografar natureza",
+    "Aprender edição de vídeo básica",
+    "Praticar respiração avançada",
+    "Fazer trilhas leves",
+    "Estudar programação básica",
+    "Fazer desenho digital",
+    "Criar diário de hábitos"
+  ],
+  hard: [
+    "Aprender instrumento musical",
+    "Treinar corrida regular",
+    "Aprender programação",
+    "Criar um blog",
+    "Escrever um livro",
+    "Desenvolver um projeto pessoal",
+    "Aprender fotografia avançada",
+    "Fazer escalada",
+    "Aprender edição profissional de vídeo",
+    "Criar um aplicativo simples",
+    "Aprender design gráfico",
+    "Fazer maratona de estudos focados",
+    "Produzir música",
+    "Aprender uma nova língua fluente",
+    "Criar um canal de conteúdo",
+    "Participar de teatro",
+    "Fazer voluntariado regular",
+    "Desenvolver rotina de treino intensa",
+    "Aprender produção audiovisual",
+    "Criar um projeto completo do zero (arte, tech ou social)"
+  ]
+};
+
+const ACTIVITY_LEVELS = {
+  simple: { label: "Simples", emoji: "🟢" },
+  medium: { label: "Média", emoji: "🟡" },
+  hard: { label: "Difícil", emoji: "🔴" }
+};
+
+const ACTIVITY_LIBRARY = Object.entries(ACTIVITY_GROUPS).flatMap(([level, names]) =>
+  names.map((name, index) => ({
+    id: `${level}-${index}`,
+    name,
+    level,
+    tags: getActivityTags(name, level)
+  }))
+);
+
+const ACTIVITY_QUIZ = [
+  {
+    id: "energy",
+    title: "Como está sua energia agora?",
+    options: [
+      { label: "Baixa, quero algo leve", levels: ["simple"], tags: ["comfort", "mindfulness"] },
+      { label: "Média, consigo me envolver", levels: ["simple", "medium"], tags: ["creative", "nature", "focus"] },
+      { label: "Alta, quero um desafio", levels: ["medium", "hard"], tags: ["movement", "learning", "project"] }
+    ]
+  },
+  {
+    id: "need",
+    title: "O que você mais precisa hoje?",
+    options: [
+      { label: "Acalmar corpo e mente", levels: ["simple", "medium"], tags: ["mindfulness", "comfort", "nature"] },
+      { label: "Organizar pensamentos", levels: ["simple", "medium"], tags: ["writing", "focus", "planning"] },
+      { label: "Sentir criação e movimento", levels: ["medium", "hard"], tags: ["creative", "movement", "project"] }
+    ]
+  },
+  {
+    id: "style",
+    title: "Que estilo combina mais com você?",
+    options: [
+      { label: "Quieto e introspectivo", levels: ["simple", "medium"], tags: ["mindfulness", "writing", "comfort"] },
+      { label: "Manual e criativo", levels: ["simple", "medium", "hard"], tags: ["creative", "project"] },
+      { label: "Corpo, ar livre e ação", levels: ["simple", "medium", "hard"], tags: ["movement", "nature"] }
+    ]
+  },
+  {
+    id: "time",
+    title: "Quanto tempo você quer dedicar?",
+    options: [
+      { label: "5 a 15 minutos", levels: ["simple"], tags: ["mindfulness", "comfort"] },
+      { label: "20 a 45 minutos", levels: ["simple", "medium"], tags: ["creative", "movement", "learning"] },
+      { label: "Um projeto maior", levels: ["medium", "hard"], tags: ["project", "learning", "focus"] }
+    ]
+  },
+  {
+    id: "challenge",
+    title: "Qual nível seria gentil com você?",
+    options: [
+      { label: "Só o básico já ajuda", levels: ["simple"], tags: ["comfort", "mindfulness"] },
+      { label: "Quero algo com presença", levels: ["medium"], tags: ["creative", "movement", "focus"] },
+      { label: "Quero construir algo novo", levels: ["hard"], tags: ["project", "learning", "creative"] }
+    ]
+  }
+];
 
 // Palavras-chave que indicam conteúdo prejudicial
 const HARMFUL_KEYWORDS = [
@@ -643,6 +835,7 @@ async function saveUser() {
   state.sessionId++;
   state.emotion = "";
   state.activity = "";
+  state.activityQuiz = {};
   state.journalContent = "";
   state.completedAt = null;
   state.timeSpent = 0;
@@ -1543,6 +1736,230 @@ async function renderMindfulnessBreathing() {
   timer = safeSetInterval(updateTime, 1000);
 }
 
+/* --- QUIZ DE ATIVIDADES --- */
+
+function normalizeActivityText(text) {
+  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function getActivityTags(name, level) {
+  const text = normalizeActivityText(name);
+  const tags = new Set();
+
+  if(/caminh|along|yoga|dancar|corrida|escalada|exercicios|treino|trilhas|massagear/.test(text)) tags.add("movement");
+  if(/ar livre|plantas|ceu|chuva|natureza|sol|parque|jardin|horta|trilhas/.test(text)) tags.add("nature");
+  if(/desenhar|colorir|pintar|aquarela|croche|origami|artesanato|historias|arte|foto|fotograf|design|video|audiovisual|blog|livro|aplicativo|projeto|canal|musica|playlist|velas|caligrafia|cozinhar|receitas/.test(text)) tags.add("creative");
+  if(/escrever|diario|lista|cartas|livro|blog/.test(text)) tags.add("writing");
+  if(/respir|meditacao|mindfulness|silencio|atencao|gratidao|pausa|sem celular|relax|massag|cha|banho|texturas|observar|agradecer/.test(text)) tags.add("mindfulness");
+  if(/ouvir|assistir|ler|cha|banho|relax|deitado|podcast|filmes|videos|agua|comer|sons/.test(text)) tags.add("comfort");
+  if(/organizar|arrumar|planejamento|habitos|estudar|aprender|programacao|idioma|quebra-cabeca|maratona|rotina/.test(text)) tags.add("focus");
+  if(/aprender|estudar|idioma|programacao|violao|teclado|caligrafia/.test(text)) tags.add("learning");
+  if(level === "hard" || /projeto|blog|livro|aplicativo|canal|producao|design|rotina|voluntariado/.test(text)) tags.add("project");
+  if(/pessoas|teatro|voluntariado|social/.test(text)) tags.add("social");
+
+  return Array.from(tags);
+}
+
+function getFinalBody() {
+  const finalBody = document.getElementById('final-body');
+  if(!finalBody) return null;
+  finalBody.style.justifyContent = "flex-start";
+  finalBody.style.alignItems = "stretch";
+  finalBody.style.overflowY = "auto";
+  return finalBody;
+}
+
+function escapeHTML(value) {
+  const div = document.createElement('div');
+  div.innerText = value;
+  return div.innerHTML;
+}
+
+function openActivityQuiz() {
+  state.activityQuiz = { step: 0, answers: {} };
+  renderActivityQuiz();
+}
+
+function renderActivityQuiz() {
+  const finalBody = getFinalBody();
+  if(!finalBody) return;
+
+  const step = state.activityQuiz.step || 0;
+  const question = ACTIVITY_QUIZ[step];
+
+  finalBody.innerHTML = `
+    <div class="activity-panel">
+      <div class="quiz-progress">Pergunta ${step + 1} de ${ACTIVITY_QUIZ.length}</div>
+      <h2>${question.title}</h2>
+      <p class="prose">Responda com o que parece mais honesto agora. Jim vai escolher 10 atividades para o seu momento.</p>
+      <div class="quiz-options">
+        ${question.options.map((option, index) => `
+          <button class="quiz-option" onclick="answerActivityQuiz(${index})">${option.label}</button>
+        `).join('')}
+      </div>
+      <button class="btn btn-ghost" onclick="renderFinalScreen(state.timeSpent || 1)">Voltar</button>
+    </div>
+  `;
+}
+
+function answerActivityQuiz(optionIndex) {
+  const step = state.activityQuiz.step || 0;
+  const question = ACTIVITY_QUIZ[step];
+  state.activityQuiz.answers[question.id] = question.options[optionIndex];
+  state.activityQuiz.step = step + 1;
+
+  if(state.activityQuiz.step >= ACTIVITY_QUIZ.length) {
+    renderActivityRecommendations();
+    return;
+  }
+
+  renderActivityQuiz();
+}
+
+function getEmotionActivityBias() {
+  const bias = {
+    levels: { simple: 0, medium: 0, hard: 0 },
+    tags: {}
+  };
+
+  const addTags = tags => Object.entries(tags).forEach(([tag, value]) => {
+    bias.tags[tag] = (bias.tags[tag] || 0) + value;
+  });
+
+  if(state.emotion === "anxious") {
+    bias.levels.simple += 3;
+    bias.levels.medium += 1;
+    addTags({ mindfulness: 4, nature: 3, comfort: 2, writing: 1 });
+  } else if(state.emotion === "sad") {
+    bias.levels.simple += 2;
+    bias.levels.medium += 2;
+    addTags({ comfort: 3, creative: 3, nature: 2, writing: 2, social: 1 });
+  } else if(state.emotion === "stressed") {
+    bias.levels.simple += 2;
+    bias.levels.medium += 2;
+    addTags({ mindfulness: 4, movement: 3, nature: 2, comfort: 2, focus: 1 });
+  } else if(state.emotion === "overwhelmed") {
+    bias.levels.simple += 3;
+    bias.levels.medium += 1;
+    addTags({ mindfulness: 4, focus: 3, comfort: 2, nature: 2, writing: 1 });
+  }
+
+  const mood = Number(state.mood);
+  if(!Number.isNaN(mood)) {
+    if(mood <= 1) {
+      bias.levels.simple += 2;
+      addTags({ comfort: 2, mindfulness: 2 });
+    } else if(mood >= 3) {
+      bias.levels.medium += 1;
+      bias.levels.hard += 1;
+      addTags({ movement: 1, project: 1, learning: 1 });
+    }
+  }
+
+  return bias;
+}
+
+function scoreActivity(item) {
+  const answers = Object.values(state.activityQuiz.answers || {});
+  const levelScores = { simple: 0, medium: 0, hard: 0 };
+  const tagScores = {};
+  const bias = getEmotionActivityBias();
+
+  answers.forEach(answer => {
+    (answer.levels || []).forEach(level => levelScores[level] += 3);
+    (answer.tags || []).forEach(tag => tagScores[tag] = (tagScores[tag] || 0) + 4);
+  });
+
+  let score = 1 + levelScores[item.level] + bias.levels[item.level];
+  item.tags.forEach(tag => {
+    score += tagScores[tag] || 0;
+    score += bias.tags[tag] || 0;
+  });
+
+  if(item.level === "simple") score += 0.8;
+  if(item.tags.length === 0) score -= 1;
+  return score;
+}
+
+function recommendActivities(limit = 10) {
+  return ACTIVITY_LIBRARY
+    .map(item => ({ ...item, score: scoreActivity(item) }))
+    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+    .slice(0, limit);
+}
+
+function tagLabel(tag) {
+  const labels = {
+    movement: "movimento",
+    nature: "natureza",
+    creative: "criatividade",
+    writing: "escrita",
+    mindfulness: "calma",
+    comfort: "acolhimento",
+    focus: "organização",
+    learning: "aprendizado",
+    project: "projeto",
+    social: "conexão"
+  };
+  return labels[tag] || tag;
+}
+
+function activityReason(item) {
+  const primaryTags = item.tags.slice(0, 2).map(tagLabel).join(" e ");
+  const level = ACTIVITY_LEVELS[item.level].label.toLowerCase();
+  if(primaryTags) return `Combina com seu momento por ser uma atividade ${level} ligada a ${primaryTags}.`;
+  return `Combina com seu momento por ser uma atividade ${level} e fácil de adaptar.`;
+}
+
+function renderActivityRecommendations() {
+  const finalBody = getFinalBody();
+  if(!finalBody) return;
+
+  const recommendations = recommendActivities(10);
+  finalBody.innerHTML = `
+    <div class="activity-panel">
+      <div class="quiz-progress">Suas 10 atividades</div>
+      <h2>Próximos passos gentis</h2>
+      <p class="prose">Escolha uma só para começar. A meta é presença, não performance.</p>
+      <div style="margin-top:14px;">
+        ${recommendations.map(item => `
+          <div class="activity-card">
+            <span class="difficulty-pill difficulty-${item.level}">${ACTIVITY_LEVELS[item.level].emoji} ${ACTIVITY_LEVELS[item.level].label}</span>
+            <strong>${escapeHTML(item.name)}</strong>
+            <div class="activity-reason">${activityReason(item)}</div>
+          </div>
+        `).join('')}
+      </div>
+      <button class="btn btn-primary" onclick="openActivityQuiz()">Refazer quiz</button>
+      <button class="btn btn-ghost" onclick="renderFullActivityList()">Ver lista completa</button>
+      <button class="btn btn-ghost" onclick="renderFinalScreen(state.timeSpent || 1)">Voltar ao final</button>
+    </div>
+  `;
+}
+
+function renderFullActivityList() {
+  const finalBody = getFinalBody();
+  if(!finalBody) return;
+
+  finalBody.innerHTML = `
+    <div class="activity-panel">
+      <div class="quiz-progress">Biblioteca de atividades</div>
+      <h2>Escolha pelo tamanho do passo</h2>
+      <p class="prose">A lista completa fica aqui para quando você quiser explorar sem pressão.</p>
+      ${Object.entries(ACTIVITY_GROUPS).map(([level, names]) => `
+        <div class="activity-list-group">
+          <h3>${ACTIVITY_LEVELS[level].emoji} ${ACTIVITY_LEVELS[level].label}</h3>
+          <div class="activity-chip-list">
+            ${names.map(name => `<span class="activity-chip">${escapeHTML(name)}</span>`).join('')}
+          </div>
+        </div>
+      `).join('')}
+      <button class="btn btn-primary" onclick="openActivityQuiz()">Fazer quiz</button>
+      <button class="btn btn-ghost" onclick="renderFinalScreen(state.timeSpent || 1)">Voltar ao final</button>
+    </div>
+  `;
+}
+
 /* --- FINALIZAÇÃO --- */
 
 function ensureUserJournal() {
@@ -1625,6 +2042,9 @@ function renderFinalScreen(timeSpent = 1) {
     console.error('final-body não encontrado');
     return;
   }
+  finalBody.style.justifyContent = "center";
+  finalBody.style.alignItems = "center";
+  finalBody.style.overflowY = "auto";
 
   finalBody.innerHTML = `
     <div class="jim-icon">🌤️</div>
@@ -1635,7 +2055,9 @@ function renderFinalScreen(timeSpent = 1) {
         <p class="prose" style="font-size:13px; color: var(--text-soft); font-style: italic;">Você é mais forte do que pensa. 💚</p>
     </div>
     <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
-      <button class="btn btn-primary" onclick="backToWelcome()">Fazer novo Check-in</button>
+      <button class="btn btn-primary" onclick="openActivityQuiz()">Receber 10 atividades recomendadas</button>
+      <button class="btn btn-ghost" onclick="renderFullActivityList()">Ver lista completa de atividades</button>
+      <button class="btn btn-ghost" onclick="backToWelcome()">Fazer novo Check-in</button>
       <button class="btn btn-ghost" onclick="exitApp()">Sair</button>
     </div>
     <p class="prose" style="font-size:11px; margin-top:15px;">Se precisar de ajuda urgente, ligue 188 (CVV).</p>
@@ -1663,6 +2085,7 @@ function backToWelcome() {
   state.emotion = "";
   state.path = "";
   state.activity = "";
+  state.activityQuiz = {};
   state.mood = null;
   state.groundingIndex = 0;
   state.journalContent = "";
@@ -1688,6 +2111,9 @@ function exitApp() {
   nextScreen('scr-final');
   const finalBody = document.getElementById('final-body');
   if(finalBody) {
+    finalBody.style.justifyContent = "center";
+    finalBody.style.alignItems = "center";
+    finalBody.style.overflowY = "auto";
     finalBody.innerHTML = `
       <div class="jim-icon" style="animation: none; margin-bottom: 20px;">👋</div>
       <h2>Até em breve!</h2>
